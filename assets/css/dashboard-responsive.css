@@ -1,0 +1,114 @@
+/* Dashboard breakpoints */
+
+@media (max-width: 1200px) {
+  .dn-stat-grid,
+  .dashboard-widgets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius: 0 20px 20px 0;
+    box-shadow: var(--shadow-medium);
+  }
+
+  .dashboard-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .dashboard-sidebar-close {
+    display: inline-flex;
+  }
+
+  .dashboard-main {
+    margin-left: 0;
+  }
+
+  .dashboard-menu-btn {
+    display: inline-flex;
+  }
+
+  .dashboard-body {
+    padding: 0.25rem 1rem 2rem;
+  }
+
+  .dashboard-topbar-wrap {
+    padding: 0.65rem 0.85rem 0.35rem;
+  }
+
+  .dn-stat-grid,
+  .dashboard-widgets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dn-stat-grid,
+  .dashboard-widgets {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-body .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-search {
+    max-width: none;
+    width: 100%;
+  }
+
+  .dashboard-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-topbar-right {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .data-panel.table-wrapper,
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 576px) {
+  .dn-page-head-row {
+    flex-direction: column;
+  }
+
+  .dashboard-profile-btn span.truncate {
+    max-width: 120px;
+  }
+
+  .dashboard-body .gradient-button,
+  .dashboard-body .outline-button,
+  .dashboard-body .btn-primary {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .dn-page-actions {
+    width: 100%;
+  }
+
+  .dn-page-actions .gradient-button,
+  .dn-page-actions .outline-button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-body {
+    padding-inline: 0.75rem;
+  }
+
+  .dashboard-topbar-wrap {
+    padding-inline: 0.65rem;
+  }
+}

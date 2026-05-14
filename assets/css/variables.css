@@ -1,0 +1,53 @@
+:root {
+  --color-primary: #5b7cfa;
+  --color-primary-strong: #3e5de6;
+  --color-secondary: #7f56d9;
+  --color-accent: #22c7d7;
+  --color-success: #15b77e;
+  --color-warning: #f4b740;
+  --color-danger: #ef4d75;
+
+  --bg-main: linear-gradient(125deg, #0d142f 0%, #17173a 45%, #132a34 100%);
+  --bg-soft: linear-gradient(140deg, #152246 0%, #1f2e54 100%);
+  --bg-card: rgba(255, 255, 255, 0.12);
+  --bg-card-strong: rgba(255, 255, 255, 0.18);
+  --bg-navbar: rgba(9, 14, 33, 0.58);
+
+  --border-light: rgba(255, 255, 255, 0.2);
+  --border-muted: rgba(255, 255, 255, 0.12);
+
+  --text-main: #f5f8ff;
+  --text-soft: #ced7f1;
+  --text-muted: #9ca8c9;
+  --text-dark: #10203f;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-3xl: 2.75rem;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.22);
+  --shadow-glow: 0 16px 45px rgba(91, 124, 250, 0.28);
+  --shadow-card: 0 18px 50px rgba(3, 9, 26, 0.35);
+
+  --transition-fast: 0.2s ease;
+  --transition-base: 0.3s ease;
+}

@@ -1,0 +1,23 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__) . '/includes/auth_check.php';
+require_once dirname(__DIR__) . '/includes/role_check.php';
+require_once dirname(__DIR__) . '/includes/payment_method_helpers.php';
+require_role(['admin']);
+$pdo=db();$id=intval($_GET['id']??0);
+$stmt=$pdo->prepare('SELECT np.*,u.full_name,u.email,u.phone,u.profile_photo_url FROM ngo_profiles np INNER JOIN users u ON u.id=np.user_id WHERE np.id=:id LIMIT 1');$stmt->execute(['id'=>$id]);$ngo=$stmt->fetch();if(!$ngo) exit('NGO not found');
+$stmt=$pdo->prepare('SELECT * FROM ngo_payment_methods WHERE ngo_id=:n');$stmt->execute(['n'=>$id]);$methods=$stmt->fetchAll();
+$stmt=$pdo->prepare('SELECT * FROM campaigns WHERE ngo_id=:n');$stmt->execute(['n'=>$id]);$campaigns=$stmt->fetchAll();
+$stmt=$pdo->prepare("SELECT SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) pending_count,SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) rejected_count,SUM(CASE WHEN status='confirmed' THEN amount ELSE 0 END) confirmed_amount FROM donations WHERE ngo_id=:n");$stmt->execute(['n'=>$id]);$summary=$stmt->fetch();
+$stmt=$pdo->prepare('SELECT * FROM volunteer_campaigns WHERE ngo_id=:n ORDER BY created_at DESC LIMIT 20');$stmt->execute(['n'=>$id]);$volReq=$stmt->fetchAll();
+$stmt=$pdo->prepare('SELECT id,subject,status FROM reports WHERE reported_user_id=:u OR reported_campaign_id IN (SELECT id FROM campaigns WHERE ngo_id=:n) ORDER BY created_at DESC');$stmt->execute(['u'=>(int)$ngo['user_id'],'n'=>$id]);$reports=$stmt->fetchAll();
+$stmt=$pdo->prepare('SELECT * FROM admin_notes WHERE target_user_id=:u ORDER BY created_at DESC LIMIT 20');$stmt->execute(['u'=>(int)$ngo['user_id']]);$notes=$stmt->fetchAll();
+$pageTitle='NGO Detail';require_once dirname(__DIR__) . '/includes/dashboard_layout_start.php';require dirname(__DIR__) . '/includes/breadcrumbs.php';
+?>
+<h1 class="section-title">NGO Detail</h1>
+<div class="glass-card" style="padding:1rem;margin-bottom:1rem;"><img src="<?= sanitize(image_or_placeholder((string)($ngo['logo_url']??$ngo['profile_photo_url']??''),'profile')) ?>" alt="NGO logo" style="width:62px;height:62px;border-radius:50%;object-fit:cover;"> <strong><?= sanitize($ngo['ngo_name']) ?></strong> <span class="badge">ngo</span><p><?= sanitize($ngo['email']) ?> | <?= sanitize((string)$ngo['phone']) ?></p><p>Verification: <span class="status-badge"><?= sanitize((string)$ngo['verification_status']) ?></span></p></div>
+<div class="dashboard-widgets" style="margin-bottom:1rem;"><div class="stat-card dashboard-card"><small>Total received amount</small><h3>PKR <?= number_format((float)($summary['confirmed_amount']??0),2) ?></h3></div><div class="stat-card dashboard-card"><small>Pending donations</small><h3><?= (int)($summary['pending_count']??0) ?></h3></div><div class="stat-card dashboard-card"><small>Rejected donations</small><h3><?= (int)($summary['rejected_count']??0) ?></h3></div></div>
+<div class="grid" style="grid-template-columns:1fr 1fr;"><div class="table-wrapper"><h3>Payment methods</h3><table><thead><tr><th>Title</th><th>Type</th><th>Account</th><th>Status</th></tr></thead><tbody><?php foreach ($methods as $m): ?><tr><td><?= sanitize($m['method_title']) ?></td><td><span class="dn-pm-card__type-pill" style="font-size:0.68rem;"><?= sanitize(payment_method_type_label((string) $m['method_type'])) ?></span></td><td><span class="dn-pm-kv__v--mono" style="font-size:0.85rem;"><?= sanitize($m['account_number']) ?></span></td><td><span class="status-badge"><?= sanitize($m['status']) ?></span></td></tr><?php endforeach; ?></tbody></table></div><div class="table-wrapper"><h3>Campaigns</h3><table><tbody><?php foreach($campaigns as $c): ?><tr><td><?= sanitize($c['title']) ?></td><td><?= sanitize($c['status']) ?></td><td>PKR <?= number_format((float)$c['collected_amount'],2) ?></td></tr><?php endforeach; ?></tbody></table></div></div>
+<div class="grid" style="grid-template-columns:1fr 1fr;margin-top:1rem;"><div class="glass-card" style="padding:1rem;"><h3>Volunteer Requests</h3><?php foreach($volReq as $v): ?><p>#<?= (int)$v['id'] ?> <?= sanitize($v['status']) ?> campaign #<?= (int)$v['campaign_id'] ?></p><?php endforeach; ?></div><div class="glass-card" style="padding:1rem;"><h3>Reports Against NGO</h3><?php foreach($reports as $r): ?><p>#<?= (int)$r['id'] ?> <?= sanitize($r['subject']) ?> <span class="status-badge"><?= sanitize($r['status']) ?></span></p><?php endforeach; ?></div></div>
+<div class="glass-card" style="padding:1rem;margin-top:1rem;"><h3>Admin Notes</h3><?php foreach($notes as $n): ?><p><?= sanitize((string)$n['created_at']) ?> - <?= sanitize($n['note']) ?></p><?php endforeach; ?></div>
+<?php require_once dirname(__DIR__) . '/includes/dashboard_layout_end.php'; ?>

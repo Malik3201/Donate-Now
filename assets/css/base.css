@@ -1,0 +1,97 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html { scroll-behavior: smooth; }
+
+/* Hide scrollbars globally while keeping scroll (wheel, touch, trackpad, keys).
+   Add class "dn-show-scrollbar" on a scroll container to show bars again if needed. */
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.dn-show-scrollbar {
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+}
+
+.dn-show-scrollbar::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+  height: 8px;
+}
+
+body {
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+::selection { background: rgba(127, 86, 217, 0.5); color: #fff; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; border-radius: var(--radius-md); }
+/* Form controls: font everywhere; color is set per page theme below */
+button, input, textarea, select {
+  font: inherit;
+}
+.container { width: min(1200px, 92%); margin: 0 auto; }
+.section { padding: var(--space-12) 0; position: relative; }
+.section-title { font-size: clamp(1.8rem, 4vw, 2.6rem); margin-bottom: var(--space-3); }
+.section-subtitle { color: var(--text-soft); max-width: 720px; margin-bottom: var(--space-8); }
+.text-center { text-align: center; }
+.grid { display: grid; gap: var(--space-6); }
+.hidden { display: none !important; }
+.badge, .status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.08);
+}
+.status-badge.success { color: #cbffe6; background: rgba(21, 183, 126, 0.2); }
+.status-badge.warning { color: #ffe7c4; background: rgba(244, 183, 64, 0.18); }
+.status-badge.danger { color: #ffd8e3; background: rgba(239, 77, 117, 0.2); }
+.btn {
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-base), background var(--transition-base);
+}
+.btn:active { transform: scale(0.98); }
+/* Dark marketing / public pages only — dashboard uses dashboard.css */
+body:not(.dashboard-app) input,
+body:not(.dashboard-app) textarea,
+body:not(.dashboard-app) select {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-muted);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  outline: none;
+}
+
+body:not(.dashboard-app) input:focus,
+body:not(.dashboard-app) textarea:focus,
+body:not(.dashboard-app) select:focus {
+  border-color: rgba(127, 86, 217, 0.8);
+  box-shadow: 0 0 0 3px rgba(127, 86, 217, 0.2);
+}
+
+body:not(.dashboard-app) label {
+  display: inline-block;
+  margin-bottom: var(--space-2);
+  color: var(--text-soft);
+  font-size: var(--fs-sm);
+}
+
+body:not(.dashboard-app) button {
+  color: inherit;
+}

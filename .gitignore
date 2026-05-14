@@ -1,0 +1,26 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# Logs and runtime
+*.log
+logs/
+tmp/
+temp/
+cache/
+
+# Upload/runtime generated files (if any local fallback used)
+uploads/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
