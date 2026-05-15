@@ -4,11 +4,12 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/config/database.php';
 require_once dirname(__DIR__) . '/includes/functions.php';
 require_once dirname(__DIR__) . '/includes/ui_helpers.php';
+require_once dirname(__DIR__) . '/includes/location_helpers.php';
 
 $pdo = db();
 $campaignId = (int) ($_GET['id'] ?? 0);
 
-$stmt = $pdo->prepare("SELECT c.*, cc.name AS category_name, np.ngo_name, np.description AS ngo_description, u.email AS ngo_email
+$stmt = $pdo->prepare("SELECT c.*, cc.name AS category_name, np.ngo_name, np.description AS ngo_description, np.latitude AS ngo_latitude, np.longitude AS ngo_longitude, np.address AS ngo_address, u.email AS ngo_email
 FROM campaigns c
 LEFT JOIN campaign_categories cc ON cc.id = c.category_id
 INNER JOIN ngo_profiles np ON np.id = c.ngo_id
@@ -56,13 +57,16 @@ if ($donorDashboard) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?> | Donate Now</title>
+  <?= app_favicon_tags() ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('assets/css/variables.css'), ENT_QUOTES, 'UTF-8') ?>">
   <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('assets/css/dashboard.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= urlencode($dashCssV) ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('assets/css/brand.css'), ENT_QUOTES, 'UTF-8') ?>">
+  <?= mobile_app_css_tag() ?>
 </head>
 <body class="dashboard-app">
 <div class="dashboard-shell" style="min-height:100vh;padding:1.5rem;box-sizing:border-box;">
@@ -139,6 +143,7 @@ if ($donorDashboard) {
         <div class="dn-campaign-prose">
           <?= nl2br(htmlspecialchars((string) $campaign['description'], ENT_QUOTES, 'UTF-8')) ?>
         </div>
+        <?= render_campaign_location_maps($campaign) ?>
       </section>
 
       <section class="data-panel dn-campaign-updates" style="margin-top:0;border-radius:22px;">
@@ -173,6 +178,11 @@ if ($donorDashboard) {
         <div class="dn-campaign-prose dn-campaign-prose--compact">
           <?= nl2br(htmlspecialchars(trim((string) ($campaign['ngo_description'] ?? '')), ENT_QUOTES, 'UTF-8')) ?>
         </div>
+        <?php
+        $ngoUrl = $donorDashboard ? ngo_detail_page_url('donor', (int) $campaign['ngo_id']) : '';
+        if ($ngoUrl !== ''): ?>
+          <a class="outline-button" style="margin-top:0.75rem;width:100%;justify-content:center;" href="<?= htmlspecialchars($ngoUrl, ENT_QUOTES, 'UTF-8') ?>">View NGO on map</a>
+        <?php endif; ?>
       </div>
       <div class="glass-card dn-campaign-trust-card">
         <h3 class="dn-campaign-trust-card__title">Transparent giving</h3>

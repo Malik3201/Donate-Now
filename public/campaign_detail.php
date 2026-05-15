@@ -3,9 +3,10 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/config/database.php';
 require_once dirname(__DIR__) . '/includes/functions.php';
 require_once dirname(__DIR__) . '/includes/public_header.php';
+require_once dirname(__DIR__) . '/includes/location_helpers.php';
 $pdo = db();
 $campaignId = (int) ($_GET['id'] ?? 0);
-$stmt = $pdo->prepare("SELECT c.*, cc.name AS category_name, np.ngo_name, np.description AS ngo_description, np.verification_status FROM campaigns c LEFT JOIN campaign_categories cc ON cc.id = c.category_id INNER JOIN ngo_profiles np ON np.id = c.ngo_id WHERE c.id = :id AND c.status IN ('pending','approved','active') LIMIT 1");
+$stmt = $pdo->prepare("SELECT c.*, cc.name AS category_name, np.ngo_name, np.description AS ngo_description, np.verification_status, np.latitude AS ngo_latitude, np.longitude AS ngo_longitude, np.address AS ngo_address, np.id AS ngo_profile_id FROM campaigns c LEFT JOIN campaign_categories cc ON cc.id = c.category_id INNER JOIN ngo_profiles np ON np.id = c.ngo_id WHERE c.id = :id AND c.status IN ('pending','approved','active') LIMIT 1");
 $stmt->execute(['id' => $campaignId]);
 $campaign = $stmt->fetch();
 if (!$campaign) {
@@ -34,6 +35,7 @@ $progress = ((float) $campaign['target_amount'] > 0) ? min(100, ((float) $campai
           <p class="help-text" style="margin:0.75rem 0;padding:0.75rem 1rem;border-radius:12px;border:1px solid rgba(244,183,64,0.45);background:rgba(244,183,64,0.12);">This campaign is still <strong>pending review</strong>. Donations open after an administrator marks it approved or active.</p>
         <?php endif; ?>
         <p><?= nl2br(sanitize((string) $campaign['description'])) ?></p>
+        <?= render_campaign_location_maps($campaign) ?>
         <p>Start: <?= sanitize((string) $campaign['start_date']) ?> | End: <?= sanitize((string) $campaign['end_date']) ?></p>
         <h3 style="margin-top:1rem;">Campaign Updates</h3>
         <?php if (!$updates): ?><div class="empty-state">No updates yet.</div><?php endif; ?>

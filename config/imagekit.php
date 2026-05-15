@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * ImageKit CDN uploads (campaign images, donation proof, profile photos).
+ * Optional: falls back to placeholders in ui_helpers when not configured.
+ */
+
 require_once __DIR__ . '/app.php';
 
 function imagekit_config(): array

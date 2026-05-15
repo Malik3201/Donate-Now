@@ -81,10 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'verification_status' => 'pending',
                 ]);
 
-                $admins = $pdo->query("SELECT id,email FROM users WHERE role='admin' AND account_status='active'")->fetchAll();
-                foreach ($admins as $admin) {
-                    create_notification($pdo, (int)$admin['id'], 'New NGO Registration', 'A new NGO has registered and is awaiting verification.', 'ngo');
-                    send_new_ngo_registration_admin_email((string)$admin['email'], ['ngo_name' => (string)($_POST['ngo_name'] ?? ''), 'email' => $email]);
+                foreach (admin_users_for_notifications($pdo) as $admin) {
+                    create_notification($pdo, (int) $admin['id'], 'New NGO Registration', 'A new NGO has registered and is awaiting verification.', 'ngo');
+                }
+                $ngoAdminPayload = ['ngo_name' => (string) ($_POST['ngo_name'] ?? ''), 'email' => $email];
+                foreach (admin_mail_recipients($pdo) as $adminEmail) {
+                    send_new_ngo_registration_admin_email($adminEmail, $ngoAdminPayload);
                 }
             }
 

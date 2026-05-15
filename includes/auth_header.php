@@ -10,8 +10,9 @@ $authCssVersion = is_file($authCssPath) ? (string) filemtime($authCssPath) : (st
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title><?= isset($pageTitle) ? sanitize((string) $pageTitle) : 'Authentication' ?> | Donate Now</title>
+  <?= app_favicon_tags() ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
@@ -22,13 +23,15 @@ $authCssVersion = is_file($authCssPath) ? (string) filemtime($authCssPath) : (st
   <link rel="stylesheet" href="<?= asset_url('assets/css/landing.css') ?>?v=<?= urlencode($landingCssVersion) ?>">
   <link rel="stylesheet" href="<?= asset_url('assets/css/forms.css') ?>">
   <link rel="stylesheet" href="<?= asset_url('assets/css/auth.css') ?>?v=<?= urlencode($authCssVersion) ?>">
+  <link rel="stylesheet" href="<?= asset_url('assets/css/brand.css') ?>">
   <link rel="stylesheet" href="<?= asset_url('assets/css/responsive.css') ?>">
+  <?= mobile_app_css_tag() ?>
 </head>
 <body class="landing-body auth-page">
 <header class="auth-topbar auth-header">
   <div class="container auth-topbar-inner">
     <a class="auth-brand" href="<?= APP_URL ?>/index.php" aria-label="Donate Now home">
-      <span class="brand-mark" aria-hidden="true"></span>
+      <?= app_logo_img('app-logo brand-mark', 38, 38) ?>
       <span class="auth-brand-text">Donate Now</span>
     </a>
     <a class="auth-back-home" href="<?= APP_URL ?>/index.php">Back to Home</a>

@@ -61,7 +61,7 @@ body.landing-body.auth-page ::selection {
   text-decoration: none;
 }
 
-.auth-brand .brand-mark {
+.auth-brand .brand-mark:not(img) {
   width: 1.45rem;
   height: 1.45rem;
   border-radius: 999px;
@@ -70,7 +70,7 @@ body.landing-body.auth-page ::selection {
   flex-shrink: 0;
 }
 
-.auth-brand .brand-mark::after {
+.auth-brand .brand-mark:not(img)::after {
   content: "";
   width: 0.45rem;
   height: 0.45rem;

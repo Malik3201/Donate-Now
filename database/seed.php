@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * DEV ONLY: creates default admin (admin@localdonation.com / admin123) if missing.
+ * Run once locally: php database/seed.php — do not use on production.
+ */
+
 require_once dirname(__DIR__) . '/config/database.php';
 
 $pdo = db();

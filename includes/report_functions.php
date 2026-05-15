@@ -29,14 +29,16 @@ function create_report_record(PDO $pdo, array $payload): int
 
 function notify_admins_for_report(PDO $pdo, int $reportId, string $subject, string $reportType, string $reporterName): void
 {
-    $admins = $pdo->query("SELECT id, email FROM users WHERE role='admin' AND account_status='active'")->fetchAll();
-    foreach ($admins as $admin) {
-        create_notification($pdo, (int)$admin['id'], 'New Report Submitted', 'New report received: ' . $subject, 'report');
-        send_new_report_submitted_email((string)$admin['email'], [
-            'report_id' => $reportId,
-            'subject' => $subject,
-            'report_type' => $reportType,
-            'reporter_name' => $reporterName,
-        ]);
+    foreach (admin_users_for_notifications($pdo) as $admin) {
+        create_notification($pdo, (int) $admin['id'], 'New Report Submitted', 'New report received: ' . $subject, 'report');
+    }
+    $payload = [
+        'report_id' => $reportId,
+        'subject' => $subject,
+        'report_type' => $reportType,
+        'reporter_name' => $reporterName,
+    ];
+    foreach (admin_mail_recipients($pdo) as $email) {
+        send_new_report_submitted_email($email, $payload);
     }
 }

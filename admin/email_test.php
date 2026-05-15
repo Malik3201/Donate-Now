@@ -34,7 +34,9 @@ $templateOptions = [
 $msg = '';
 $error = '';
 $brevo = brevo_config();
-$mailConfigured = $brevo['api_key'] !== '' && $brevo['from_email'] !== '';
+$mailConfigured = brevo_mail_is_configured();
+$mailTransport = brevo_mail_transport();
+$defaultAdminEmail = admin_primary_email() ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -71,7 +73,13 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
 
 <?php if (!$mailConfigured): ?>
   <div class="toast error" style="margin-bottom:1rem;">
-    Email is not configured: set <strong>BREVO_API_KEY</strong> (v3 key, <code>xkeysib-…</code>) and <strong>BREVO_FROM_EMAIL</strong> (verified sender) in <code>.env</code>.
+    Email is not configured: set <strong>BREVO_FROM_EMAIL</strong> (verified sender) and either
+    <strong>BREVO_API_KEY</strong> (<code>xkeysib-…</code>) or SMTP
+    <strong>BREVO_SMTP_USER</strong> + <strong>BREVO_SMTP_PASS</strong> (<code>xsmtpsib-…</code>) in <code>.env</code>.
+  </div>
+<?php elseif ($mailTransport === 'smtp'): ?>
+  <div class="toast" style="margin-bottom:1rem;background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.35);">
+    Using <strong>SMTP</strong> (<?= htmlspecialchars($brevo['smtp_host'], ENT_QUOTES, 'UTF-8') ?>:<?= (int) $brevo['smtp_port'] ?>) with sender <?= htmlspecialchars($brevo['from_email'], ENT_QUOTES, 'UTF-8') ?>.
   </div>
 <?php endif; ?>
 
@@ -84,7 +92,10 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
       <input type="hidden" name="csrf_token" value="<?= sanitize(csrf_token()) ?>">
       <div class="form-group" style="grid-column: 1 / -1;">
         <label for="recipient_email">Recipient email</label>
-        <input id="recipient_email" name="recipient_email" type="email" required placeholder="you@example.com" value="<?= sanitize((string) ($_POST['recipient_email'] ?? '')) ?>">
+        <input id="recipient_email" name="recipient_email" type="email" required placeholder="you@example.com" value="<?= sanitize((string) ($_POST['recipient_email'] ?? $defaultAdminEmail)) ?>">
+        <?php if ($defaultAdminEmail !== ''): ?>
+          <p class="help-text" style="margin:0.35rem 0 0;">Admin alerts use <strong><?= sanitize($defaultAdminEmail) ?></strong> from <code>ADMIN_EMAIL</code> in <code>.env</code>.</p>
+        <?php endif; ?>
       </div>
       <div class="form-group" style="grid-column: 1 / -1;">
         <label for="template">Template</label>

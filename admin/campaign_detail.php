@@ -8,9 +8,11 @@ if (!in_array($currentRole, ['admin', 'ngo'], true)) {
     exit('Unauthorized access for this role.');
 }
 
+require_once dirname(__DIR__) . '/includes/location_helpers.php';
+
 $pdo = db();
 $id = (int) ($_GET['id'] ?? 0);
-$stmt = $pdo->prepare('SELECT c.*, np.ngo_name, u.email AS ngo_email FROM campaigns c INNER JOIN ngo_profiles np ON np.id = c.ngo_id INNER JOIN users u ON u.id = np.user_id WHERE c.id = :id LIMIT 1');
+$stmt = $pdo->prepare('SELECT c.*, np.ngo_name, np.latitude AS ngo_latitude, np.longitude AS ngo_longitude, np.address AS ngo_address, u.email AS ngo_email FROM campaigns c INNER JOIN ngo_profiles np ON np.id = c.ngo_id INNER JOIN users u ON u.id = np.user_id WHERE c.id = :id LIMIT 1');
 $stmt->execute(['id' => $id]);
 $c = $stmt->fetch();
 if (!$c) {
@@ -56,6 +58,10 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
   <p><strong>Target:</strong> PKR <?= number_format((float) $c['target_amount'], 2) ?> &nbsp;|&nbsp; <strong>Collected:</strong> PKR <?= number_format((float) $c['collected_amount'], 2) ?></p>
   <p><?= nl2br(htmlspecialchars((string) $c['description'], ENT_QUOTES, 'UTF-8')) ?></p>
 </div>
+<?= render_campaign_location_maps($c) ?>
+<?php if ($currentRole === 'admin'): ?>
+<p style="margin:0 0 1rem;"><a class="outline-button" href="<?= htmlspecialchars(ngo_detail_page_url('admin', (int) $c['ngo_id']), ENT_QUOTES, 'UTF-8') ?>">View NGO profile</a></p>
+<?php endif; ?>
 <div class="data-panel table-wrapper">
   <h3>Donations</h3>
   <table>

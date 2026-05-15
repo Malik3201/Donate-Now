@@ -1,0 +1,45 @@
+/* Shared logo (assets/logo-icon.png) — no placeholder overlays */
+img.app-logo,
+.app-logo.brand-mark,
+.dashboard-sidebar-brand-mark.app-logo {
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: none !important;
+  box-shadow: none !important;
+  border-radius: 0;
+  position: static;
+}
+
+img.app-logo::after,
+.app-logo.brand-mark::after,
+.dashboard-sidebar-brand-mark.app-logo::after {
+  display: none !important;
+  content: none !important;
+}
+
+.nav-brand .app-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.footer-brand .app-logo {
+  width: 42px;
+  height: 42px;
+}
+
+.auth-brand .app-logo {
+  width: 38px;
+  height: 38px;
+}
+
+.dashboard-sidebar-brand .app-logo {
+  width: 40px;
+  height: 40px;
+}
+
+/* Legacy gradient placeholders (empty spans only) */
+.brand-mark:not(img),
+.dashboard-sidebar-brand-mark:not(img) {
+  display: none;
+}

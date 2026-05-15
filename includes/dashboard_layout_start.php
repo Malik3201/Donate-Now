@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Opens HTML shell for logged-in users: sidebar + topbar + dashboard-body.
+ * Page must set $pageTitle before including this file.
+ * Close with dashboard_layout_end.php. Requires auth_check.php first.
+ */
+
 require_once dirname(__DIR__) . '/includes/ui_helpers.php';
 
 $pageTitle = $pageTitle ?? 'Dashboard';
@@ -15,8 +21,9 @@ $dashRespV = is_file($dashRespPath) ? (string) filemtime($dashRespPath) : (strin
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title><?= htmlspecialchars((string) $pageTitle, ENT_QUOTES, 'UTF-8') ?> | Donate Now</title>
+  <?= app_favicon_tags() ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
@@ -29,6 +36,8 @@ $dashRespV = is_file($dashRespPath) ? (string) filemtime($dashRespPath) : (strin
   <link rel="stylesheet" href="<?= asset_url('assets/css/dashboard.css') ?>?v=<?= urlencode($dashCssV) ?>">
   <link rel="stylesheet" href="<?= asset_url('assets/css/dashboard-responsive.css') ?>?v=<?= urlencode($dashRespV) ?>">
   <link rel="stylesheet" href="<?= asset_url('assets/css/responsive.css') ?>">
+  <link rel="stylesheet" href="<?= asset_url('assets/css/brand.css') ?>">
+  <?= mobile_app_css_tag() ?>
 </head>
 <body class="dashboard-app">
 <div class="dashboard-shell" id="dashboardShell">

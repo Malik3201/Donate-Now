@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Dashboard guard: include at the top of any page that requires login.
+ * Sets $pdo and $authUser, or redirects to auth/login.php.
+ * Add require_role() from role_check.php when only certain roles may access.
+ */
+
 require_once dirname(__DIR__) . '/config/database.php';
 require_once __DIR__ . '/functions.php';
 

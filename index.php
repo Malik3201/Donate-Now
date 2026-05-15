@@ -1,9 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Public home page (landing). Marketing sections + featured campaigns from DB.
+ * Layout: public_header.php → sections below → public_footer.php
+ * See includes/CODE_GUIDE.php for full site structure.
+ */
+
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/ui_helpers.php';
+require_once __DIR__ . '/includes/landing_carousel.php';
 
 $isLandingPage = true;
 $pageTitle = 'Donate Now | Transparent Local Giving';
@@ -28,6 +35,7 @@ $stats = [
 
 $featuredCampaigns = [];
 
+// Load live stats and featured campaigns; fall back to defaults above if DB is unavailable
 try {
   $pdo = db();
 
@@ -64,6 +72,7 @@ try {
 require_once __DIR__ . '/includes/public_header.php';
 ?>
 <main class="landing-main">
+  <!-- Hero: primary CTAs and trust metrics -->
   <section class="hero section-dark" style="--hero-image: url('<?= sanitize($landingImages['hero']) ?>');">
     <div class="hero-overlay"></div>
     <div class="hero-grain"></div>
@@ -102,45 +111,52 @@ require_once __DIR__ . '/includes/public_header.php';
         <h2>One platform. Four clear signals of trust.</h2>
         <p>Built for people who want proof, not promises. These numbers reflect a growing local ecosystem where giving, verification, and accountability happen together.</p>
       </div>
-      <div class="stats-grid stagger-group">
-        <article class="stat-card reveal reveal-up">
-          <span class="stat-icon">N</span>
-          <h3 data-counter="<?= (int)$stats['verified_ngos'] ?>">0</h3>
-          <p>Verified NGOs</p>
-          <small>Reviewed before full participation</small>
+      <?php
+        $statSlides = [
+          ['icon' => 'N', 'key' => 'verified_ngos', 'label' => 'Verified NGOs', 'hint' => 'Reviewed before full participation'],
+          ['icon' => 'C', 'key' => 'active_campaigns', 'label' => 'Active Campaigns', 'hint' => 'Community needs currently open'],
+          ['icon' => 'D', 'key' => 'donations_verified', 'label' => 'Donations Verified', 'hint' => 'Proof confirmed by NGOs'],
+          ['icon' => 'V', 'key' => 'volunteers_connected', 'label' => 'Volunteers Connected', 'hint' => 'People supporting beyond money'],
+        ];
+        landing_carousel_open('Impact statistics', 'stats', 38);
+        foreach (array_merge($statSlides, $statSlides) as $slide):
+          $value = (int)($stats[$slide['key']] ?? 0);
+      ?>
+        <article class="stat-card">
+          <span class="stat-icon"><?= sanitize($slide['icon']) ?></span>
+          <h3 data-counter="<?= $value ?>">0</h3>
+          <p><?= sanitize($slide['label']) ?></p>
+          <small><?= sanitize($slide['hint']) ?></small>
         </article>
-        <article class="stat-card reveal reveal-up">
-          <span class="stat-icon">C</span>
-          <h3 data-counter="<?= (int)$stats['active_campaigns'] ?>">0</h3>
-          <p>Active Campaigns</p>
-          <small>Community needs currently open</small>
-        </article>
-        <article class="stat-card reveal reveal-up">
-          <span class="stat-icon">D</span>
-          <h3 data-counter="<?= (int)$stats['donations_verified'] ?>">0</h3>
-          <p>Donations Verified</p>
-          <small>Proof confirmed by NGOs</small>
-        </article>
-        <article class="stat-card reveal reveal-up">
-          <span class="stat-icon">V</span>
-          <h3 data-counter="<?= (int)$stats['volunteers_connected'] ?>">0</h3>
-          <p>Volunteers Connected</p>
-          <small>People supporting beyond money</small>
-        </article>
-      </div>
+      <?php endforeach; landing_carousel_close(); ?>
     </div>
   </section>
 
-  <section class="section mission-story section-photo-bg section-photo-bg--dark" style="--section-bg-image: url('<?= sanitize($landingImages['ourStory']) ?>');">
-    <div class="section-photo-overlay" aria-hidden="true"></div>
-    <div class="section-photo-grain" aria-hidden="true"></div>
-    <div class="container mission-story-inner">
-      <div class="mission-text reveal reveal-up">
-        <span class="section-kicker section-kicker--on-dark">Our Story</span>
+  <section id="about" class="section about-us-section">
+    <div class="container">
+      <div class="about-us-intro reveal reveal-up">
+        <span class="section-kicker">About Us</span>
         <h2>Donate Now exists because trust should be built in, not assumed.</h2>
-        <p>Traditional donation flows often leave donors guessing whether help reached the right place. NGOs juggle scattered proof. Volunteers want to pitch in but rarely see a single, accountable path.</p>
-        <p>We built one transparent journey: verified NGOs, proof-backed donations, and admin oversight so every record stays traceable from first click to confirmed impact.</p>
+        <p>We connect donors, verified NGOs, and volunteers through transparent, proof-based giving built for real local impact.</p>
       </div>
+      <div class="about-us-grid stagger-group">
+        <article class="about-us-card reveal reveal-up">
+          <h3>Transparency</h3>
+          <p>Donors upload payment proof; NGOs verify; admins monitor. Every step leaves a clear audit trail.</p>
+        </article>
+        <article class="about-us-card reveal reveal-up">
+          <h3>Accountability</h3>
+          <p>Verified NGO profiles, campaign review, and reporting tools keep the platform safe and fair.</p>
+        </article>
+        <article class="about-us-card reveal reveal-up">
+          <h3>Local impact</h3>
+          <p>Community-led causes where donors can see tangible outcomes in their own regions.</p>
+        </article>
+      </div>
+      <p class="about-us-actions reveal reveal-up">
+        <a class="btn btn-primary" href="<?= APP_URL ?>/pages/about.php">Learn more about us</a>
+        <a class="btn btn-olive" href="<?= APP_URL ?>/pages/contact.php">Contact us</a>
+      </p>
     </div>
   </section>
 
@@ -195,63 +211,35 @@ require_once __DIR__ . '/includes/public_header.php';
           <a class="btn btn-primary" href="<?= APP_URL ?>/public/campaigns.php">Browse Campaigns</a>
         </div>
       <?php else: ?>
-        <div class="campaign-grid stagger-group">
-          <?php foreach ($featuredCampaigns as $campaign): ?>
-            <?php
-              $target = max(0.0, (float)($campaign['target_amount'] ?? 0));
-              $collected = max(0.0, (float)($campaign['collected_amount'] ?? 0));
-              $progress = $target > 0 ? min(100.0, ($collected / $target) * 100) : 0.0;
-              $title = sanitize((string)($campaign['title'] ?? 'Campaign'));
-              $ngoName = sanitize((string)($campaign['ngo_name'] ?? 'Verified NGO'));
-              $category = sanitize((string)($campaign['category_name'] ?? 'General'));
-              $description = sanitize((string)($campaign['description'] ?? 'Support this campaign to help local communities through transparent giving.'));
-              $imageUrl = sanitize(image_or_placeholder((string)($campaign['image_url'] ?? ''), 'campaign'));
-              $statusLabel = sanitize((string)($campaign['status'] ?? 'active'));
-            ?>
-            <article class="campaign-card reveal reveal-up">
-              <div class="campaign-media">
-                <img src="<?= $imageUrl ?>" alt="<?= $title ?> campaign image">
-                <span class="campaign-badge"><?= $category ?></span>
-              </div>
-              <div class="campaign-body">
-                <div class="campaign-head">
-                  <h3><?= $title ?></h3>
-                  <span class="campaign-status"><?= $statusLabel ?></span>
-                </div>
-                <p class="campaign-ngo">By <?= $ngoName ?></p>
-                <p class="campaign-desc"><?= $description ?></p>
-                <div class="campaign-amounts">
-                  <p>Target <strong>PKR <?= number_format($target, 2) ?></strong></p>
-                  <p>Collected <strong>PKR <?= number_format($collected, 2) ?></strong></p>
-                </div>
-                <div class="progress-wrap" aria-label="Campaign progress">
-                  <div class="progress-bar" style="width: <?= number_format($progress, 2) ?>%"></div>
-                </div>
-                <div class="campaign-foot">
-                  <span><?= number_format($progress, 2) ?>% funded</span>
-                  <a class="btn btn-primary btn-sm" href="<?= APP_URL ?>/public/campaign_detail.php?id=<?= (int)$campaign['id'] ?>">View & Donate</a>
-                </div>
-              </div>
-            </article>
-          <?php endforeach; ?>
-        </div>
+        <?php
+          landing_carousel_open('Featured campaigns', 'campaigns', 36);
+          foreach (array_merge($featuredCampaigns, $featuredCampaigns) as $campaign) {
+            landing_render_featured_campaign_card($campaign);
+          }
+          landing_carousel_close();
+        ?>
       <?php endif; ?>
     </div>
   </section>
-
   <section class="section transparency-model section-dark-cocoa" id="safety">
     <div class="container">
       <div class="section-heading reveal reveal-up">
         <span class="section-kicker">Transparency Model</span>
         <h2>Every donation leaves a clear trail.</h2>
       </div>
-      <div class="flow-grid stagger-group">
-        <article class="flow-card reveal reveal-up"><strong>Donor</strong><p>Chooses a campaign and payment method.</p></article>
-        <article class="flow-card reveal reveal-up"><strong>Payment Proof</strong><p>Screenshot + TID are uploaded safely.</p></article>
-        <article class="flow-card reveal reveal-up"><strong>NGO Verification</strong><p>Proof is confirmed or rejected by NGO.</p></article>
-        <article class="flow-card reveal reveal-up"><strong>Admin Oversight</strong><p>Moderation and visibility remain active.</p></article>
-        <article class="flow-card reveal reveal-up"><strong>Permanent Record</strong><p>Status and trace stay in structured history.</p></article>
-      </div>
+      <?php
+        $flowSlides = [
+          ['title' => 'Donor', 'text' => 'Chooses a campaign and payment method.'],
+          ['title' => 'Payment Proof', 'text' => 'Screenshot + TID are uploaded safely.'],
+          ['title' => 'NGO Verification', 'text' => 'Proof is confirmed or rejected by NGO.'],
+          ['title' => 'Admin Oversight', 'text' => 'Moderation and visibility remain active.'],
+          ['title' => 'Permanent Record', 'text' => 'Status and trace stay in structured history.'],
+        ];
+        landing_carousel_open('Transparency flow', 'flow', 34);
+        foreach (array_merge($flowSlides, $flowSlides) as $slide):
+      ?>
+        <article class="flow-card"><strong><?= sanitize($slide['title']) ?></strong><p><?= sanitize($slide['text']) ?></p></article>
+      <?php endforeach; landing_carousel_close(); ?>
     </div>
   </section>
 
@@ -323,12 +311,18 @@ require_once __DIR__ . '/includes/public_header.php';
       <div class="safety-core reveal reveal-scale">
         <p>Every report, verification, and moderation action stays visible in a clear trust trail.</p>
       </div>
-      <div class="safety-grid stagger-group">
-        <article class="safety-card reveal reveal-up"><h3>Report suspicious activity</h3><p>Flag fake NGO, fake campaign, fake payment, fraud, or abuse.</p></article>
-        <article class="safety-card reveal reveal-up"><h3>Admin moderation</h3><p>Admins can review reports and apply controls with evidence.</p></article>
-        <article class="safety-card reveal reveal-up"><h3>Account protection</h3><p>Block, suspend, or temporarily hold users when needed.</p></article>
-        <article class="safety-card reveal reveal-up"><h3>Transaction visibility</h3><p>Sender, receiver, campaign, status, and proof remain traceable.</p></article>
-      </div>
+      <?php
+        $safetySlides = [
+          ['title' => 'Report suspicious activity', 'text' => 'Flag fake NGO, fake campaign, fake payment, fraud, or abuse.'],
+          ['title' => 'Admin moderation', 'text' => 'Admins can review reports and apply controls with evidence.'],
+          ['title' => 'Account protection', 'text' => 'Block, suspend, or temporarily hold users when needed.'],
+          ['title' => 'Transaction visibility', 'text' => 'Sender, receiver, campaign, status, and proof remain traceable.'],
+        ];
+        landing_carousel_open('Safety features', 'safety', 32);
+        foreach (array_merge($safetySlides, $safetySlides) as $slide):
+      ?>
+        <article class="safety-card"><h3><?= sanitize($slide['title']) ?></h3><p><?= sanitize($slide['text']) ?></p></article>
+      <?php endforeach; landing_carousel_close(); ?>
     </div>
   </section>
 
@@ -356,47 +350,50 @@ require_once __DIR__ . '/includes/public_header.php';
         <h2>What donors, NGOs, and volunteers say about transparent giving.</h2>
         <p class="voices-lead">These voices reflect how proof-based verification and clear records change the way people give, organize, and show up for local causes.</p>
       </header>
-      <div class="voices-grid stagger-group">
-        <article class="voice-card reveal reveal-up">
-          <span class="voice-role">Donor</span>
+      <?php
+        $voiceSlides = [
+          [
+            'role' => 'Donor',
+            'quote' => 'I used to hesitate before sending support. Here I upload proof once, see the status move to confirmed, and keep everything in my history without chasing receipts.',
+            'avatar' => 'AR',
+            'avatarClass' => '',
+            'name' => 'Aisha Rahman',
+            'location' => 'Lahore',
+          ],
+          [
+            'role' => 'Verified NGO',
+            'quote' => 'Our team finally has one place for campaigns, payment methods, and donation proofs. Donors see that we verify every entry—it strengthens trust without extra admin chaos.',
+            'avatar' => 'CC',
+            'avatarClass' => ' voice-avatar--olive',
+            'name' => 'Care Circle Foundation',
+            'location' => 'Program lead',
+          ],
+          [
+            'role' => 'Volunteer',
+            'quote' => 'I browse active campaigns, send a join request, and get a clear accept or decline. Knowing the same platform tracks donations and volunteering keeps me engaged.',
+            'avatar' => 'UT',
+            'avatarClass' => '',
+            'name' => 'Usman Tariq',
+            'location' => 'Weekend field volunteer',
+          ],
+        ];
+        landing_carousel_open('Community voices', 'voices', 30);
+        foreach (array_merge($voiceSlides, $voiceSlides) as $slide):
+      ?>
+        <article class="voice-card">
+          <span class="voice-role"><?= sanitize($slide['role']) ?></span>
           <blockquote>
-            <p>I used to hesitate before sending support. Here I upload proof once, see the status move to confirmed, and keep everything in my history without chasing receipts.</p>
+            <p><?= sanitize($slide['quote']) ?></p>
           </blockquote>
           <footer class="voice-meta">
-            <span class="voice-avatar" aria-hidden="true">AR</span>
+            <span class="voice-avatar<?= $slide['avatarClass'] ?>" aria-hidden="true"><?= sanitize($slide['avatar']) ?></span>
             <div>
-              <strong>Aisha Rahman</strong>
-              <span class="voice-location">Lahore</span>
+              <strong><?= sanitize($slide['name']) ?></strong>
+              <span class="voice-location"><?= sanitize($slide['location']) ?></span>
             </div>
           </footer>
         </article>
-        <article class="voice-card reveal reveal-up">
-          <span class="voice-role">Verified NGO</span>
-          <blockquote>
-            <p>Our team finally has one place for campaigns, payment methods, and donation proofs. Donors see that we verify every entry—it strengthens trust without extra admin chaos.</p>
-          </blockquote>
-          <footer class="voice-meta">
-            <span class="voice-avatar voice-avatar--olive" aria-hidden="true">CC</span>
-            <div>
-              <strong>Care Circle Foundation</strong>
-              <span class="voice-location">Program lead</span>
-            </div>
-          </footer>
-        </article>
-        <article class="voice-card reveal reveal-up">
-          <span class="voice-role">Volunteer</span>
-          <blockquote>
-            <p>I browse active campaigns, send a join request, and get a clear accept or decline. Knowing the same platform tracks donations and volunteering keeps me engaged.</p>
-          </blockquote>
-          <footer class="voice-meta">
-            <span class="voice-avatar" aria-hidden="true">UT</span>
-            <div>
-              <strong>Usman Tariq</strong>
-              <span class="voice-location">Weekend field volunteer</span>
-            </div>
-          </footer>
-        </article>
-      </div>
+      <?php endforeach; landing_carousel_close(); ?>
       <p class="voices-note reveal reveal-up">Illustrative community perspectives aligned with how Donate Now is designed to work.</p>
     </div>
   </section>

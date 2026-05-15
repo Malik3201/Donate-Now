@@ -1,8 +1,14 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * MySQL PDO singleton. Credentials from .env: DB_HOST, DB_NAME, DB_USER, DB_PASS.
+ * Most pages call db() after requiring this file (directly or via auth_check.php).
+ */
+
 require_once __DIR__ . '/app.php';
 
+/** @return PDO Shared connection for the current request */
 function db(): PDO
 {
     static $pdo = null;

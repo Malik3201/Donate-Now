@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/includes/auth_check.php';
 require_once dirname(__DIR__) . '/includes/mail_helper.php';
+require_once dirname(__DIR__) . '/includes/location_helpers.php';
 $pdo = db();
 $msg = '';
 $currentProfile = [];
@@ -22,8 +23,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare('UPDATE donor_profiles SET address = :address, updated_at = NOW() WHERE user_id = :id');
         $stmt->execute(['address' => trim((string)($_POST['address'] ?? '')) ?: null, 'id' => (int)$authUser['id']]);
     } elseif ($authUser['role'] === 'ngo') {
-        $stmt = $pdo->prepare('UPDATE ngo_profiles SET ngo_name = :ngo_name, description = :description, address = :address, updated_at = NOW() WHERE user_id = :id');
-        $stmt->execute(['ngo_name' => trim((string)($_POST['ngo_name'] ?? '')), 'description' => trim((string)($_POST['description'] ?? '')) ?: null, 'address' => trim((string)($_POST['address'] ?? '')) ?: null, 'id' => (int)$authUser['id']]);
+        $coords = location_coords_from_post();
+        $stmt = $pdo->prepare('UPDATE ngo_profiles SET ngo_name = :ngo_name, description = :description, address = :address, latitude = :latitude, longitude = :longitude, updated_at = NOW() WHERE user_id = :id');
+        $stmt->execute([
+            'ngo_name' => trim((string) ($_POST['ngo_name'] ?? '')),
+            'description' => trim((string) ($_POST['description'] ?? '')) ?: null,
+            'address' => trim((string) ($_POST['address'] ?? '')) ?: null,
+            'latitude' => $coords['lat'],
+            'longitude' => $coords['lng'],
+            'id' => (int) $authUser['id'],
+        ]);
     } elseif ($authUser['role'] === 'volunteer') {
         $stmt = $pdo->prepare('UPDATE volunteer_profiles SET skills = :skills, availability = :availability, address = :address, updated_at = NOW() WHERE user_id = :id');
         $stmt->execute(['skills' => trim((string)($_POST['skills'] ?? '')) ?: null, 'availability' => trim((string)($_POST['availability'] ?? '')) ?: null, 'address' => trim((string)($_POST['address'] ?? '')) ?: null, 'id' => (int)$authUser['id']]);
@@ -42,7 +51,9 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
 <?php if($authUser['role']==='donor'): ?>
 <div class="form-group"><label>Address</label><input name="address" value="<?= sanitize((string)($currentProfile['address'] ?? '')) ?>"></div>
 <?php elseif($authUser['role']==='ngo'): ?>
-<div class="form-grid"><div class="form-group"><label>NGO Name</label><input name="ngo_name" value="<?= sanitize((string)($currentProfile['ngo_name'] ?? '')) ?>"></div><div class="form-group"><label>Address</label><input name="address" value="<?= sanitize((string)($currentProfile['address'] ?? '')) ?>"></div></div><div class="form-group"><label>Description</label><textarea name="description" rows="4"><?= sanitize((string)($currentProfile['description'] ?? '')) ?></textarea></div>
+<div class="form-group"><label>NGO Name</label><input name="ngo_name" value="<?= sanitize((string)($currentProfile['ngo_name'] ?? '')) ?>"></div>
+<div class="form-group"><label>Description</label><textarea name="description" rows="4"><?= sanitize((string)($currentProfile['description'] ?? '')) ?></textarea></div>
+<?= render_location_map_picker($currentProfile['latitude'] ?? null, $currentProfile['longitude'] ?? null, (string)($currentProfile['address'] ?? ''), null, '', false, true, false, 'dn-map-ngo-profile') ?>
 <?php elseif($authUser['role']==='volunteer'): ?>
 <div class="form-grid"><div class="form-group"><label>Skills</label><input name="skills" value="<?= sanitize((string)($currentProfile['skills'] ?? '')) ?>"></div><div class="form-group"><label>Availability</label><input name="availability" value="<?= sanitize((string)($currentProfile['availability'] ?? '')) ?>"></div></div><div class="form-group"><label>Address</label><input name="address" value="<?= sanitize((string)($currentProfile['address'] ?? '')) ?>"></div>
 <?php endif; ?>

@@ -1,8 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Core helpers used on almost every page.
+ * Full project map: see includes/CODE_GUIDE.php
+ *
+ * Typical public page:  require config/database.php + this file
+ * Typical dashboard:    auth_check.php (loads database + this file)
+ */
+
 require_once dirname(__DIR__) . '/config/app.php';
 
+// --- Output & navigation ---
+
+/** Escape HTML for safe echo in templates */
 function sanitize(?string $data): string
 {
     return htmlspecialchars(trim((string) $data), ENT_QUOTES, 'UTF-8');
@@ -15,11 +26,14 @@ function redirect(string $path): void
     exit;
 }
 
+// --- Session / user ---
+
 function is_logged_in(): bool
 {
     return isset($_SESSION['user_id']) && (int) $_SESSION['user_id'] > 0;
 }
 
+/** Load the logged-in row from `users` (null if guest) */
 function current_user(PDO $pdo): ?array
 {
     if (!is_logged_in()) {
@@ -64,6 +78,8 @@ function log_activity(PDO $pdo, ?int $actor_user_id, string $action, ?string $en
         'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
     ]);
 }
+
+// --- Security (forms) ---
 
 function csrf_token(): string
 {

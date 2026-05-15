@@ -1,11 +1,70 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Branding and asset URLs: logo, favicon, placeholders, mobile-app.css loader.
+ * Used by public pages, dashboard layout, and emails (app_email_logo_url).
+ */
+
 require_once dirname(__DIR__) . '/config/app.php';
 
+/** Build a versioned URL under APP_URL for css/js/images */
 function asset_url(string $path): string
 {
     return APP_URL . '/' . ltrim($path, '/');
+}
+
+function app_logo_relative_path(): string
+{
+    return 'assets/logo-icon.png';
+}
+
+function app_logo_url(): string
+{
+    $rel = app_logo_relative_path();
+    $abs = dirname(__DIR__) . '/' . $rel;
+    $v = is_file($abs) ? (string) filemtime($abs) : (string) time();
+
+    return asset_url($rel) . '?v=' . rawurlencode($v);
+}
+
+/** Public CDN URL for logo in transactional emails (must be HTTPS and internet-reachable). */
+function app_email_logo_url(): string
+{
+    $custom = trim((string) env_value('EMAIL_LOGO_URL', ''));
+    if ($custom !== '') {
+        return $custom;
+    }
+
+    return 'https://ik.imagekit.io/Uespak/logo-icon.png';
+}
+
+function app_favicon_tags(): string
+{
+    $url = htmlspecialchars(app_logo_url(), ENT_QUOTES, 'UTF-8');
+
+    return '<link rel="icon" type="image/png" href="' . $url . '">' . "\n"
+        . '  <link rel="apple-touch-icon" href="' . $url . '">';
+}
+
+/**
+ * Site logo image (logo-icon.png) for headers, sidebars, footers.
+ */
+function mobile_app_css_tag(): string
+{
+    $path = dirname(__DIR__) . '/assets/css/mobile-app.css';
+    $v = is_file($path) ? (string) filemtime($path) : (string) time();
+
+    return '<link rel="stylesheet" href="' . htmlspecialchars(asset_url('assets/css/mobile-app.css'), ENT_QUOTES, 'UTF-8') . '?v=' . urlencode($v) . '">';
+}
+
+function app_logo_img(string $class = 'app-logo', int $width = 40, int $height = 40, string $alt = 'Donate Now'): string
+{
+    $url = htmlspecialchars(app_logo_url(), ENT_QUOTES, 'UTF-8');
+    $classEsc = htmlspecialchars($class, ENT_QUOTES, 'UTF-8');
+    $altEsc = htmlspecialchars($alt, ENT_QUOTES, 'UTF-8');
+
+    return '<img class="' . $classEsc . '" src="' . $url . '" width="' . $width . '" height="' . $height . '" alt="' . $altEsc . '" decoding="async">';
 }
 
 function image_or_placeholder(?string $imageUrl, string $type = 'campaign'): string

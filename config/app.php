@@ -1,10 +1,17 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Application bootstrap: sessions + .env loading.
+ * Defines APP_URL and env_value() used across the site.
+ * Database connection is in config/database.php (not loaded here automatically).
+ */
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+/** Read a key from getenv() or from the project root `.env` file. */
 function env_value(string $key, ?string $default = null): ?string
 {
     $value = getenv($key);

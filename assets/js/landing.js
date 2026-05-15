@@ -5,37 +5,81 @@
   var navToggle = root.getElementById('mobileNavToggle');
   var backTop = root.getElementById('backToTop');
   var hero = root.querySelector('.hero');
+  var isStaticPage = root.body && root.body.classList.contains('static-page');
+  var lastScrollY = window.scrollY || 0;
 
   var onScroll = function () {
-    var shouldSolid = window.scrollY > 28;
+    var scrollY = window.scrollY || 0;
+    var shouldSolid = scrollY > 28;
+
     if (header) {
-      header.classList.toggle('is-scrolled', shouldSolid);
+      if (isStaticPage) {
+        header.classList.remove('is-scrolled');
+        if (scrollY < 72) {
+          header.classList.remove('is-nav-hidden');
+        } else if (scrollY > lastScrollY + 6) {
+          header.classList.add('is-nav-hidden');
+          if (nav) {
+            nav.classList.remove('is-open');
+            nav.classList.remove('open');
+          }
+          if (navToggle) {
+            navToggle.setAttribute('aria-expanded', 'false');
+          }
+        } else if (scrollY < lastScrollY - 6) {
+          header.classList.remove('is-nav-hidden');
+        }
+      } else {
+        header.classList.toggle('is-scrolled', shouldSolid);
+      }
     }
+
     if (backTop) {
-      backTop.style.display = window.scrollY > 500 ? 'inline-flex' : 'none';
+      backTop.style.display = scrollY > 500 ? 'inline-flex' : 'none';
     }
     if (hero) {
-      var offset = Math.min(window.scrollY * 0.18, 90);
+      var offset = Math.min(scrollY * 0.18, 90);
       hero.style.backgroundPositionY = offset + 'px';
     }
+
+    lastScrollY = scrollY;
   };
 
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
+  function setNavOpen(isOpen) {
+    if (nav) {
+      nav.classList.toggle('is-open', isOpen);
+      nav.classList.toggle('open', isOpen);
+    }
+    if (navToggle) {
+      navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+    if (root.body) {
+      root.body.classList.toggle('nav-open', isOpen);
+      root.body.style.overflow = isOpen ? 'hidden' : '';
+    }
+  }
+
+  window.setNavOpen = setNavOpen;
+
   if (navToggle && nav) {
     navToggle.addEventListener('click', function () {
-      var isOpen = nav.classList.toggle('is-open');
-      nav.classList.toggle('open', isOpen);
-      navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      var isOpen = !nav.classList.contains('is-open');
+      setNavOpen(isOpen);
     });
 
     root.addEventListener('click', function (event) {
-      if (!nav.contains(event.target) && !navToggle.contains(event.target)) {
-        nav.classList.remove('is-open');
-        nav.classList.remove('open');
-        navToggle.setAttribute('aria-expanded', 'false');
+      if (root.body.classList.contains('nav-open') && !nav.contains(event.target) && !navToggle.contains(event.target)) {
+        setNavOpen(false);
       }
+    });
+
+    nav.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () {
+        setNavOpen(false);
+      });
     });
   }
 
@@ -57,13 +101,7 @@
       }
       event.preventDefault();
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      if (nav) {
-        nav.classList.remove('is-open');
-        nav.classList.remove('open');
-      }
-      if (navToggle) {
-        navToggle.setAttribute('aria-expanded', 'false');
-      }
+      setNavOpen(false);
     });
   });
 
@@ -127,6 +165,70 @@
     window.requestAnimationFrame(frame);
   };
 
+  var carousels = root.querySelectorAll('.dn-auto-carousel');
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var mobileCarouselMq = window.matchMedia('(max-width: 992px)');
+
+  carousels.forEach(function (carousel) {
+    var track = carousel.querySelector('.dn-auto-carousel__track');
+    if (!track) {
+      return;
+    }
+
+    var speed = parseInt(carousel.getAttribute('data-speed') || '42', 10);
+    if (!speed || speed < 1) {
+      speed = 42;
+    }
+
+    var markDuplicates = function () {
+      var items = Array.prototype.slice.call(track.children);
+      var half = Math.floor(items.length / 2);
+      items.forEach(function (item, index) {
+        if (index >= half) {
+          item.setAttribute('aria-hidden', 'true');
+        } else {
+          item.removeAttribute('aria-hidden');
+        }
+      });
+      return items.length;
+    };
+
+    var setDuration = function () {
+      if (!mobileCarouselMq.matches || prefersReducedMotion) {
+        track.style.removeProperty('--dn-carousel-duration');
+        return;
+      }
+      var halfWidth = track.scrollWidth / 2;
+      if (halfWidth <= 0) {
+        return;
+      }
+      var duration = Math.max(18, Math.min(90, halfWidth / speed));
+      track.style.setProperty('--dn-carousel-duration', duration + 's');
+    };
+
+    var refreshCarousel = function () {
+      if (markDuplicates() < 2) {
+        return;
+      }
+      setDuration();
+    };
+
+    refreshCarousel();
+
+    if ('ResizeObserver' in window) {
+      var resizeObserver = new ResizeObserver(refreshCarousel);
+      resizeObserver.observe(track);
+    } else {
+      window.addEventListener('resize', refreshCarousel);
+    }
+
+    if (typeof mobileCarouselMq.addEventListener === 'function') {
+      mobileCarouselMq.addEventListener('change', refreshCarousel);
+    } else if (typeof mobileCarouselMq.addListener === 'function') {
+      mobileCarouselMq.addListener(refreshCarousel);
+    }
+  });
+
   var counters = root.querySelectorAll('[data-counter]');
   if ('IntersectionObserver' in window && counters.length) {
     var counterObserver = new IntersectionObserver(function (entries, observer) {
@@ -139,10 +241,17 @@
     }, { threshold: 0.4 });
 
     counters.forEach(function (counter) {
+      if (counter.closest('[aria-hidden="true"]')) {
+        return;
+      }
       counterObserver.observe(counter);
     });
   } else {
-    counters.forEach(animateCounter);
+    counters.forEach(function (counter) {
+      if (!counter.closest('[aria-hidden="true"]')) {
+        animateCounter(counter);
+      }
+    });
   }
 
   root.querySelectorAll('[data-faq-trigger]').forEach(function (trigger) {

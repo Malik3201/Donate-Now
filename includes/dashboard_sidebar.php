@@ -61,7 +61,7 @@ $roleLabel = $sessionRole === 'ngo' ? 'NGO' : ucfirst($sessionRole);
 <aside id="dashboardSidebar" class="dashboard-sidebar" aria-label="Primary navigation">
   <button type="button" class="dashboard-sidebar-close" id="sidebarClose" aria-label="Close menu"><?= dn_nav_icon('close') ?></button>
   <a class="dashboard-sidebar-brand" href="<?= APP_URL ?>/index.php">
-    <span class="dashboard-sidebar-brand-mark" aria-hidden="true"></span>
+    <?= app_logo_img('app-logo dashboard-sidebar-brand-mark', 40, 40) ?>
     <span>Donate Now</span>
   </a>
   <span class="dashboard-sidebar-role"><?= htmlspecialchars($roleLabel, ENT_QUOTES, 'UTF-8') ?></span>

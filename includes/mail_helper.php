@@ -1,27 +1,72 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Outbound email: Brevo HTTP API or SMTP (see config/brevo.php + .env).
+ * HTML layout in email_template.php. Admin alerts use admin_mail_recipients().
+ */
+
 require_once dirname(__DIR__) . '/config/brevo.php';
 require_once dirname(__DIR__) . '/config/database.php';
+require_once __DIR__ . '/smtp_mailer.php';
+require_once __DIR__ . '/email_template.php';
 
-function render_email_template(string $title, string $message, ?string $buttonText = null, ?string $buttonUrl = null): string
+/**
+ * Active admin accounts (for in-app notifications).
+ *
+ * @return list<array{id: int, email: string}>
+ */
+function admin_users_for_notifications(PDO $pdo): array
 {
-    $buttonHtml = '';
-    if ($buttonText && $buttonUrl) {
-        $buttonHtml = '<p style="margin:24px 0;"><a href="' . htmlspecialchars($buttonUrl, ENT_QUOTES, 'UTF-8') . '" style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">' . htmlspecialchars($buttonText, ENT_QUOTES, 'UTF-8') . '</a></p>';
+    $stmt = $pdo->query("SELECT id, email FROM users WHERE role = 'admin' AND account_status = 'active'");
+
+    return $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+}
+
+/**
+ * Email addresses that receive admin alerts (ADMIN_EMAIL in .env plus active admin users).
+ *
+ * @return list<string>
+ */
+function admin_mail_recipients(PDO $pdo): array
+{
+    $unique = [];
+
+    $env = trim((string) env_value('ADMIN_EMAIL', ''));
+    if ($env !== '') {
+        foreach (preg_split('/\s*,\s*/', $env) as $part) {
+            $part = trim($part);
+            if ($part !== '' && filter_var($part, FILTER_VALIDATE_EMAIL)) {
+                $unique[strtolower($part)] = $part;
+            }
+        }
     }
 
-    return '<div style="background:#f4f6f9;padding:30px 12px;font-family:Arial,sans-serif;">
-      <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;">
-        <div style="padding:18px 24px;background:#0f172a;color:#fff;font-weight:700;">Donate Now</div>
-        <div style="padding:24px;color:#111827;line-height:1.6;">
-          <h2 style="margin-top:0;">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h2>
-          <div>' . $message . '</div>
-          ' . $buttonHtml . '
-        </div>
-        <div style="padding:14px 24px;background:#f9fafb;color:#6b7280;font-size:12px;">This is an automated message from Donate Now.</div>
-      </div>
-    </div>';
+    foreach (admin_users_for_notifications($pdo) as $row) {
+        $email = trim((string) ($row['email'] ?? ''));
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $unique[strtolower($email)] = $email;
+        }
+    }
+
+    return array_values($unique);
+}
+
+/** Primary admin inbox from .env (first ADMIN_EMAIL), if set. */
+function admin_primary_email(): ?string
+{
+    $env = trim((string) env_value('ADMIN_EMAIL', ''));
+    if ($env === '') {
+        return null;
+    }
+    foreach (preg_split('/\s*,\s*/', $env) as $part) {
+        $part = trim($part);
+        if ($part !== '' && filter_var($part, FILTER_VALIDATE_EMAIL)) {
+            return $part;
+        }
+    }
+
+    return null;
 }
 
 function send_email(string $to, string $subject, string $htmlBody, ?int $user_id = null, ?string $template_name = null): bool
@@ -37,8 +82,10 @@ function send_email(string $to, string $subject, string $htmlBody, ?int $user_id
 function send_email_result(string $to, string $subject, string $htmlBody, ?int $user_id = null, ?string $template_name = null): array
 {
     $cfg = brevo_config();
-    if ($cfg['api_key'] === '' || $cfg['from_email'] === '') {
-        $detail = 'Missing BREVO_API_KEY or BREVO_FROM_EMAIL in .env.';
+    $transport = brevo_mail_transport();
+
+    if ($transport === '') {
+        $detail = 'Email not configured: set BREVO_FROM_EMAIL plus either BREVO_API_KEY (xkeysib-…) or BREVO_SMTP_USER + BREVO_SMTP_PASS (xsmtpsib-…).';
         try {
             $pdo = db();
             $stmt = $pdo->prepare('INSERT INTO email_logs (user_id, recipient_email, subject, template_name, status, error_message) VALUES (:user_id, :recipient_email, :subject, :template_name, :status, :error_message)');
@@ -54,6 +101,40 @@ function send_email_result(string $to, string $subject, string $htmlBody, ?int $
         }
 
         return ['ok' => false, 'error' => $detail];
+    }
+
+    if ($transport === 'smtp') {
+        $result = smtp_send_html_email([
+            'host' => $cfg['smtp_host'],
+            'port' => $cfg['smtp_port'],
+            'user' => $cfg['smtp_user'],
+            'pass' => $cfg['smtp_pass'],
+            'from_email' => $cfg['from_email'],
+            'from_name' => $cfg['from_name'],
+        ], $to, $subject, $htmlBody);
+
+        $ok = $result['ok'];
+        $failureDetail = $result['error'] ?? 'SMTP send failed.';
+
+        if (!$ok) {
+            error_log('Brevo SMTP send_email failed: ' . $failureDetail);
+        }
+
+        try {
+            $pdo = db();
+            $stmt = $pdo->prepare('INSERT INTO email_logs (user_id, recipient_email, subject, template_name, status, error_message) VALUES (:user_id, :recipient_email, :subject, :template_name, :status, :error_message)');
+            $stmt->execute([
+                'user_id' => $user_id,
+                'recipient_email' => $to,
+                'subject' => $subject,
+                'template_name' => $template_name,
+                'status' => $ok ? 'sent' : 'failed',
+                'error_message' => $ok ? null : $failureDetail,
+            ]);
+        } catch (Throwable $e) {
+        }
+
+        return ['ok' => $ok, 'error' => $ok ? null : $failureDetail];
     }
 
     $payload = [

@@ -101,14 +101,16 @@ if ($action === 'confirm') {
         'note' => $note,
     ]);
 
-    $admins = $pdo->query("SELECT id, email FROM users WHERE role='admin' AND account_status='active'")->fetchAll();
-    foreach ($admins as $admin) {
-        create_notification($pdo, (int)$admin['id'], 'Donation Flagged', 'A donation has been flagged by NGO for admin review.', 'donation');
-        send_flagged_donation_admin_email((string)$admin['email'], [
-            'campaign_title' => $donation['campaign_title'],
-            'donor_name' => $donation['donor_name'],
-            'transaction_reference' => $donation['transaction_reference'],
-        ]);
+    foreach (admin_users_for_notifications($pdo) as $admin) {
+        create_notification($pdo, (int) $admin['id'], 'Donation Flagged', 'A donation has been flagged by NGO for admin review.', 'donation');
+    }
+    $flaggedPayload = [
+        'campaign_title' => $donation['campaign_title'],
+        'donor_name' => $donation['donor_name'],
+        'transaction_reference' => $donation['transaction_reference'],
+    ];
+    foreach (admin_mail_recipients($pdo) as $adminEmail) {
+        send_flagged_donation_admin_email($adminEmail, $flaggedPayload);
     }
     log_activity($pdo, (int)$authUser['id'], 'donation_flagged', 'donations', $donationId, 'Donation flagged by NGO');
 }

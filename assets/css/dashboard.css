@@ -85,7 +85,7 @@
   margin-bottom: 0.85rem;
 }
 
-.dashboard-sidebar-brand-mark {
+.dashboard-sidebar-brand-mark:not(img) {
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 999px;
@@ -95,7 +95,7 @@
   box-shadow: 0 6px 16px rgba(182, 94, 60, 0.35);
 }
 
-.dashboard-sidebar-brand-mark::after {
+.dashboard-sidebar-brand-mark:not(img)::after {
   content: "";
   position: absolute;
   width: 0.55rem;
@@ -3897,6 +3897,175 @@
   font-size: 0.86rem;
   line-height: 1.5;
   color: var(--text-dark);
+}
+
+/* Profile view */
+.dashboard-body .dn-profile-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.35rem 1.5rem;
+  margin-bottom: 1.25rem;
+  background:
+    linear-gradient(135deg, rgba(182, 94, 60, 0.1), rgba(122, 139, 90, 0.08)),
+    rgba(255, 248, 238, 0.95);
+  overflow: hidden;
+}
+
+.dashboard-body .dn-profile-hero__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.dashboard-body .dn-profile-hero__avatar {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255, 248, 238, 0.95);
+  box-shadow: 0 8px 24px rgba(43, 33, 27, 0.12);
+}
+
+.dashboard-body .dn-profile-hero__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-body .dn-profile-hero__name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.dashboard-body .dn-profile-hero__name {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--cocoa);
+}
+
+.dashboard-body .dn-profile-role-badge {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-body .dn-profile-hero__meta {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.dashboard-body .dn-profile-hero__meta li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  min-width: 0;
+  font-size: 0.92rem;
+  color: var(--text-dark);
+}
+
+.dashboard-body .dn-profile-hero__meta a {
+  color: var(--terracotta-dark);
+  font-weight: 600;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.dashboard-body .dn-profile-hero__meta a:hover {
+  text-decoration: underline;
+}
+
+.dashboard-body .dn-profile-hero__meta-label,
+.dashboard-body .dn-profile-hero__status .dn-profile-hero__meta-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.dashboard-body .dn-profile-hero__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin: 0;
+}
+
+.dashboard-body .dn-profile-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.dashboard-body .dn-profile-hero__actions .gradient-button,
+.dashboard-body .dn-profile-hero__actions .outline-button {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.dashboard-body .dn-profile-overview__title {
+  margin: 0 0 0.85rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--cocoa);
+}
+
+.dashboard-body .dn-profile-overview table th {
+  width: 220px;
+}
+
+@media (min-width: 768px) {
+  .dashboard-body .dn-profile-hero {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dashboard-body .dn-profile-hero__actions {
+    width: auto;
+    max-width: min(100%, 420px);
+    flex-shrink: 0;
+    justify-content: flex-end;
+  }
+
+  .dashboard-body .dn-profile-hero__actions .gradient-button,
+  .dashboard-body .dn-profile-hero__actions .outline-button {
+    flex: 0 1 auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-body .dn-profile-hero__main {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .dashboard-body .dn-profile-hero__name-row,
+  .dashboard-body .dn-profile-hero__meta li,
+  .dashboard-body .dn-profile-hero__status {
+    justify-content: center;
+  }
+
+  .dashboard-body .dn-profile-hero__actions .gradient-button,
+  .dashboard-body .dn-profile-hero__actions .outline-button {
+    width: 100%;
+    flex: 1 1 100%;
+  }
 }
 
 @media (max-width: 900px) {

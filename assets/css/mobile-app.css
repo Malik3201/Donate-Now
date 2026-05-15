@@ -1,0 +1,493 @@
+/**
+ * Mobile / tablet polish — all rules are inside max-width media queries.
+ * Desktop layout (above breakpoints) is not modified.
+ */
+
+/* ---- Shared tablet & phone ---- */
+@media (max-width: 992px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body.landing-body,
+  body.static-page,
+  body.dashboard-app,
+  body.auth-page {
+    overflow-x: clip;
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+  }
+
+  a,
+  button,
+  .btn,
+  .gradient-button,
+  .outline-button,
+  .dashboard-nav-link,
+  .nav-link,
+  .mobile-toggle {
+    -webkit-tap-highlight-color: rgba(182, 94, 60, 0.14);
+  }
+
+  input,
+  select,
+  textarea,
+  .dashboard-search input {
+    font-size: max(16px, 1rem);
+  }
+
+  .gradient-button,
+  .outline-button,
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .btn-light,
+  .btn-outline-light {
+    min-height: 48px;
+    padding: 0.72rem 1.15rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem;
+  }
+
+  .glass-card,
+  .form-card {
+    border-radius: 20px;
+    padding: clamp(1rem, 3.5vw, 1.35rem);
+  }
+
+  .section-title {
+    font-size: clamp(1.45rem, 5vw, 1.85rem);
+    line-height: 1.15;
+  }
+
+  .section-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  /* App-style full-screen nav drawer (landing + static) */
+  body.landing-body .landing-header .nav-links,
+  body.static-page .landing-header .nav-links {
+    position: fixed;
+    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0;
+    margin: 0;
+    padding: calc(var(--landing-header-height, 74px) + env(safe-area-inset-top, 0) + 1rem) 1.15rem calc(1.25rem + env(safe-area-inset-bottom, 0));
+    background: rgba(38, 29, 24, 0.97);
+    backdrop-filter: blur(16px);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform: translateX(100%);
+    opacity: 1;
+    pointer-events: none;
+    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.landing-body .landing-header .nav-links.is-open,
+  body.landing-body .landing-header .nav-links.open,
+  body.static-page .landing-header .nav-links.is-open,
+  body.static-page .landing-header .nav-links.open {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  body.landing-body .landing-header .nav-link,
+  body.static-page .landing-header .nav-link {
+    color: rgba(255, 249, 242, 0.94) !important;
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 0.85rem 0.25rem;
+    border-bottom: 1px solid rgba(255, 249, 242, 0.08);
+    width: 100%;
+  }
+
+  body.landing-body .landing-header .nav-link::after,
+  body.static-page .landing-header .nav-link::after {
+    display: none;
+  }
+
+  body.landing-body .landing-header .mobile-actions,
+  body.static-page .landing-header .mobile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 249, 242, 0.12);
+  }
+
+  body.landing-body .landing-header .mobile-actions .btn,
+  body.static-page .landing-header .mobile-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  body.landing-body.nav-open::before,
+  body.static-page.nav-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1190;
+    background: rgba(20, 14, 12, 0.55);
+    backdrop-filter: blur(3px);
+  }
+
+  body.landing-body .landing-header .mobile-toggle,
+  body.static-page .landing-header .mobile-toggle {
+    position: relative;
+    z-index: 1210;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+
+  .back-to-top {
+    right: max(1rem, env(safe-area-inset-right, 0));
+    bottom: max(1rem, env(safe-area-inset-bottom, 0));
+    min-width: 48px;
+    min-height: 48px;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(43, 33, 27, 0.22);
+  }
+
+  /* Dashboard shell */
+  .dashboard-topbar-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin: 0 -0.25rem 0.5rem;
+    padding: 0.5rem 0.65rem 0.35rem;
+    background: rgba(255, 248, 238, 0.88);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(43, 33, 27, 0.08);
+    border-radius: 0 0 18px 18px;
+  }
+
+  .dashboard-nav-link {
+    min-height: 46px;
+    padding: 0.62rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.92rem;
+  }
+
+  .dashboard-sidebar-nav {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
+  .stat-card,
+  .dashboard-card,
+  .dn-stat-card {
+    border-radius: 18px;
+  }
+
+  .dn-page-head {
+    margin-bottom: 1rem;
+  }
+
+  .dn-page-title {
+    font-size: clamp(1.35rem, 5vw, 1.65rem);
+  }
+
+  .featured-grid,
+  .campaign-grid:not(.dn-auto-carousel__track) {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  .dn-auto-carousel--campaigns .campaign-card {
+    flex: 0 0 min(88vw, 340px);
+    width: min(88vw, 340px);
+  }
+
+  .dn-auto-carousel--stats .stat-card {
+    flex: 0 0 min(78vw, 300px);
+    width: min(78vw, 300px);
+  }
+
+  .dn-auto-carousel--flow .flow-card,
+  .dn-auto-carousel--safety .safety-card,
+  .dn-auto-carousel--voices .voice-card {
+    flex: 0 0 min(86vw, 340px);
+    width: min(86vw, 340px);
+  }
+
+  .campaign-card {
+    border-radius: 20px;
+    overflow: hidden;
+  }
+
+  .campaign-card .gradient-button {
+    width: 100%;
+    margin-top: 0.35rem;
+  }
+
+  /* Legacy public pages (campaigns list, etc.) */
+  body:not(.landing-body):not(.static-page) .site-header .nav-links {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    flex-direction: column;
+    background: rgba(38, 29, 24, 0.97);
+    transform: translateX(100%);
+    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+    padding-top: 4.5rem;
+  }
+
+  body:not(.landing-body):not(.static-page) .site-header .nav-links.open {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: min(100%, calc(100% - 1.25rem));
+    padding-inline: 0;
+  }
+
+  .dashboard-body {
+    padding: 0.35rem 0.85rem calc(1.5rem + env(safe-area-inset-bottom, 0));
+  }
+
+  .dashboard-widgets,
+  .dn-stat-grid,
+  .dn-admin-dash-metrics {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+
+  .dashboard-body .grid {
+    gap: 0.85rem !important;
+  }
+
+  .data-panel,
+  .table-wrapper {
+    border-radius: 18px;
+    margin-bottom: 0.85rem;
+  }
+
+  .table-wrapper table {
+    min-width: max-content;
+  }
+
+  .toast {
+    border-radius: 14px;
+    font-size: 0.9rem;
+  }
+
+  /* Campaign detail — app-like sticky donate bar */
+  .dn-campaign-detail-page {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0));
+  }
+
+  .dn-campaign-hero {
+    min-height: 220px;
+    border-radius: 0 0 22px 22px;
+    overflow: hidden;
+  }
+
+  .dn-campaign-hero__title {
+    font-size: clamp(1.35rem, 5.5vw, 1.75rem);
+  }
+
+  .dn-campaign-funding {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    margin: 0;
+    padding: 0.75rem 0.85rem calc(0.85rem + env(safe-area-inset-bottom, 0));
+    border-radius: 22px 22px 0 0;
+    border: 1px solid rgba(43, 33, 27, 0.1);
+    border-bottom: none;
+    box-shadow: 0 -16px 40px rgba(43, 33, 27, 0.14);
+    background: rgba(255, 248, 238, 0.96);
+    backdrop-filter: blur(14px);
+  }
+
+  .dn-campaign-funding__row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .dn-campaign-funding__stat {
+    padding: 0.35rem 0.25rem;
+    text-align: center;
+  }
+
+  .dn-campaign-funding__amount {
+    font-size: 0.82rem;
+  }
+
+  .dn-campaign-funding__label {
+    font-size: 0.62rem;
+  }
+
+  .dn-campaign-funding__cta {
+    margin: 0;
+  }
+
+  .dn-campaign-funding__donate {
+    width: 100%;
+    min-height: 50px;
+    font-size: 1rem;
+    border-radius: 14px;
+  }
+
+  .dn-campaign-detail-grid {
+    gap: 0.85rem;
+  }
+
+  .dn-campaign-section,
+  .dn-campaign-ngo-card,
+  .dn-campaign-trust-card {
+    border-radius: 18px;
+  }
+
+  .dn-campaign-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  /* Static pages */
+  .static-hero {
+    min-height: clamp(240px, 42vh, 320px);
+    padding-bottom: 2rem;
+  }
+
+  .static-hero h1 {
+    font-size: clamp(1.65rem, 6vw, 2.15rem);
+  }
+
+  .static-section {
+    padding: clamp(2.25rem, 6vw, 3.25rem) 0;
+  }
+
+  .static-contact-form {
+    border-radius: 20px;
+  }
+
+  .static-info-stack {
+    gap: 0.75rem;
+  }
+
+  /* Auth */
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-form-card,
+  .auth-shell .auth-card {
+    border-radius: 22px;
+    margin-inline: 0.85rem;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+    text-align: left;
+  }
+}
+
+@media (max-width: 576px) {
+  .nav-wrap {
+    min-height: 68px;
+    gap: 0.5rem;
+  }
+
+  .nav-brand .brand-name {
+    font-size: 0.98rem;
+  }
+
+  .nav-brand .app-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .dashboard-topbar {
+    gap: 0.5rem;
+  }
+
+  .dashboard-menu-btn {
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 12px;
+  }
+
+  .dashboard-profile-btn {
+    min-height: 44px;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .dn-page-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .dn-page-actions .gradient-button,
+  .dn-page-actions .outline-button {
+    width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions .gradient-button,
+  .form-actions .outline-button {
+    width: 100%;
+  }
+
+  .dual-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dn-location-map,
+  .dn-location-map--display {
+    height: 220px;
+    border-radius: 14px;
+  }
+
+  .dn-admin-email-test__form-card {
+    padding: 1rem !important;
+  }
+}
+
+/* Touch devices: no hover lift (mobile feel) */
+@media (max-width: 992px) and (hover: none) {
+  .glass-card:hover,
+  .campaign-card:hover,
+  .stat-card:hover,
+  .icon-card:hover,
+  .dashboard-card:hover {
+    transform: none;
+  }
+}
