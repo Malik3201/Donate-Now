@@ -1,3 +1,10 @@
 <footer class="dashboard-site-footer">
-  &copy; <?= date('Y') ?> <a href="<?= APP_URL ?>/index.php" style="display:inline-flex;align-items:center;gap:0.35rem;text-decoration:none;"><?= app_logo_img('app-logo', 22, 22, 'Donate Now') ?> <span>Donate Now</span></a> — transparent local giving.
+  <p class="dashboard-site-footer__line">
+    <span class="dashboard-site-footer__copy">&copy; <?= date('Y') ?></span>
+    <a class="dashboard-site-footer__brand" href="<?= APP_URL ?>/index.php">
+      <?= app_logo_img('app-logo', 22, 22, 'Donate Now') ?>
+      <span>Donate Now</span>
+    </a>
+    <span class="dashboard-site-footer__tagline">— transparent local giving.</span>
+  </p>
 </footer>

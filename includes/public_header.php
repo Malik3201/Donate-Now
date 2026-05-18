@@ -20,7 +20,7 @@ $landingCssVersion = is_file($landingCssPath) ? (string) filemtime($landingCssPa
   <?= app_favicon_tags() ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="<?= asset_url('assets/css/variables.css') ?>">
   <link rel="stylesheet" href="<?= asset_url('assets/css/base.css') ?>">
   <link rel="stylesheet" href="<?= asset_url('assets/css/layout.css') ?>">
@@ -35,9 +35,9 @@ $landingCssVersion = is_file($landingCssPath) ? (string) filemtime($landingCssPa
   <?= mobile_app_css_tag() ?>
 </head>
 <body class="<?= $isLandingPage || $isStaticPage ? 'landing-body' : '' ?><?= $isStaticPage ? ' static-page' : '' ?>">
-<header class="site-header landing-header <?= $isLandingPage ? 'is-landing' : '' ?>" id="siteHeader">
+<header class="site-header landing-header <?= ($isLandingPage || $isStaticPage) ? 'is-landing' : '' ?>" id="siteHeader">
   <div class="container nav-wrap">
-    <a class="nav-brand" href="<?= APP_URL ?>/index.php" aria-label="Donate Now Home">
+    <a class="nav-brand" href="<?= app_url('index.php') ?>" aria-label="Donate Now Home">
       <?= app_logo_img('app-logo brand-mark', 40, 40) ?>
       <span class="brand-name">Donate Now</span>
     </a>
@@ -47,19 +47,19 @@ $landingCssVersion = is_file($landingCssPath) ? (string) filemtime($landingCssPa
       <span></span>
     </button>
     <nav id="primaryNav" class="nav-links" aria-label="Primary navigation">
-      <a class="nav-link <?= active_nav_class('/index.php') ?>" href="<?= APP_URL ?>/index.php">Home</a>
-      <a class="nav-link <?= active_nav_class('/pages/about.php') ?>" href="<?= !empty($isLandingPage) ? APP_URL . '/index.php#about' : APP_URL . '/pages/about.php' ?>">About Us</a>
-      <a class="nav-link <?= active_nav_class('/pages/contact.php') ?>" href="<?= APP_URL ?>/pages/contact.php">Contact Us</a>
-      <a class="nav-link <?= active_nav_class('/pages/privacy-policy.php') ?>" href="<?= APP_URL ?>/pages/privacy-policy.php">Privacy Policy</a>
-      <a class="nav-link <?= active_nav_class('/pages/terms.php') ?>" href="<?= APP_URL ?>/pages/terms.php">Terms</a>
+      <a class="nav-link <?= active_nav_class('/index.php') ?>" href="<?= app_url('index.php') ?>">Home</a>
+      <a class="nav-link <?= active_nav_class('/pages/about.php') ?>" href="<?= app_url('pages/about.php') ?>">About Us</a>
+      <a class="nav-link <?= active_nav_class('/pages/contact.php') ?>" href="<?= app_url('pages/contact.php') ?>">Contact Us</a>
+      <a class="nav-link <?= active_nav_class('/pages/privacy-policy.php') ?>" href="<?= app_url('pages/privacy-policy.php') ?>">Privacy Policy</a>
+      <a class="nav-link <?= active_nav_class('/pages/terms.php') ?>" href="<?= app_url('pages/terms.php') ?>">Terms</a>
       <div class="mobile-actions">
-        <a class="btn btn-ghost" href="<?= APP_URL ?>/auth/login.php">Login</a>
-        <a class="btn btn-primary" href="<?= APP_URL ?>/auth/register.php">Register</a>
+        <a class="btn btn-ghost" href="<?= app_url('auth/login.php') ?>">Login</a>
+        <a class="btn btn-primary" href="<?= app_url('auth/register.php') ?>">Register</a>
       </div>
     </nav>
     <div class="nav-actions">
-      <a class="btn btn-ghost" href="<?= APP_URL ?>/auth/login.php">Login</a>
-      <a class="btn btn-primary" href="<?= APP_URL ?>/auth/register.php">Register</a>
+      <a class="btn btn-ghost" href="<?= app_url('auth/login.php') ?>">Login</a>
+      <a class="btn btn-primary" href="<?= app_url('auth/register.php') ?>">Register</a>
     </div>
   </div>
 </header>

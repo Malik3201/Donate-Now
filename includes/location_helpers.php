@@ -179,7 +179,7 @@ function ngo_detail_page_url(string $role, int $ngoProfileId): string
         return '';
     }
 
-    return APP_URL . $base . '?id=' . $ngoProfileId;
+    return app_url(ltrim($base, '/') . '?id=' . $ngoProfileId);
 }
 
 function render_campaign_location_maps(array $row): string

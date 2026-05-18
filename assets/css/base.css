@@ -65,10 +65,10 @@ button, input, textarea, select {
   transition: transform var(--transition-fast), box-shadow var(--transition-base), background var(--transition-base);
 }
 .btn:active { transform: scale(0.98); }
-/* Dark marketing / public pages only — dashboard uses dashboard.css */
-body:not(.dashboard-app) input,
-body:not(.dashboard-app) textarea,
-body:not(.dashboard-app) select {
+/* Dark marketing / public pages only — dashboard & auth use their own themes */
+body:not(.dashboard-app):not(.auth-page) input,
+body:not(.dashboard-app):not(.auth-page) textarea,
+body:not(.dashboard-app):not(.auth-page) select {
   width: 100%;
   padding: 0.85rem 1rem;
   border-radius: var(--radius-sm);
@@ -78,20 +78,20 @@ body:not(.dashboard-app) select {
   outline: none;
 }
 
-body:not(.dashboard-app) input:focus,
-body:not(.dashboard-app) textarea:focus,
-body:not(.dashboard-app) select:focus {
+body:not(.dashboard-app):not(.auth-page) input:focus,
+body:not(.dashboard-app):not(.auth-page) textarea:focus,
+body:not(.dashboard-app):not(.auth-page) select:focus {
   border-color: rgba(127, 86, 217, 0.8);
   box-shadow: 0 0 0 3px rgba(127, 86, 217, 0.2);
 }
 
-body:not(.dashboard-app) label {
+body:not(.dashboard-app):not(.auth-page) label {
   display: inline-block;
   margin-bottom: var(--space-2);
   color: var(--text-soft);
   font-size: var(--fs-sm);
 }
 
-body:not(.dashboard-app) button {
+body:not(.dashboard-app):not(.auth-page) button {
   color: inherit;
 }

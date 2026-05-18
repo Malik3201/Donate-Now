@@ -8,12 +8,6 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/config/app.php';
 
-/** Build a versioned URL under APP_URL for css/js/images */
-function asset_url(string $path): string
-{
-    return APP_URL . '/' . ltrim($path, '/');
-}
-
 function app_logo_relative_path(): string
 {
     return 'assets/logo-icon.png';
@@ -70,7 +64,7 @@ function app_logo_img(string $class = 'app-logo', int $width = 40, int $height =
 function image_or_placeholder(?string $imageUrl, string $type = 'campaign'): string
 {
     if (!empty($imageUrl)) {
-        return $imageUrl;
+        return resolve_url($imageUrl);
     }
 
     $placeholders = [

@@ -16,7 +16,9 @@ $canDonate = in_array((string) $campaign['status'], ['approved', 'active'], true
 $stmt = $pdo->prepare('SELECT update_title, update_description, created_at FROM campaign_updates WHERE campaign_id = :id ORDER BY created_at DESC');
 $stmt->execute(['id' => $campaignId]);
 $updates = $stmt->fetchAll();
-$donateUrl = is_logged_in() ? APP_URL . '/donor/donate.php?campaign_id=' . $campaignId : APP_URL . '/auth/login.php';
+$donateUrl = is_logged_in()
+    ? app_url('donor/donate.php?campaign_id=' . $campaignId)
+    : app_url('auth/login.php');
 $progress = ((float) $campaign['target_amount'] > 0) ? min(100, ((float) $campaign['collected_amount'] / (float) $campaign['target_amount'] * 100)) : 0;
 ?>
 <main>

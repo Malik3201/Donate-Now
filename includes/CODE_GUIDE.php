@@ -69,7 +69,7 @@ declare(strict_types=1);
  * SETUP
  * -----
  * 1. Import database/schema.sql (or run database/run_migration.php)
- * 2. Copy .env.example values into .env (APP_URL, DB_*, Brevo, ImageKit optional)
+ * 2. Copy .env.example into .env (DB_*, Brevo, ImageKit optional). APP_URL can be empty for auto-detect.
  * 3. Point Apache vhost/document root to this folder
  *
  * REMOVED / UNUSED (cleanup)

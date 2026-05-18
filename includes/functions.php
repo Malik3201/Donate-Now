@@ -21,8 +21,18 @@ function sanitize(?string $data): string
 
 function redirect(string $path): void
 {
-    $url = str_starts_with($path, 'http') ? $path : APP_URL . '/' . ltrim($path, '/');
-    header('Location: ' . $url);
+    redirect_to($path);
+}
+
+/** HTTP redirect to an app route or absolute URL. */
+function redirect_to(string $path): void
+{
+    if (preg_match('#^https?://#i', $path)) {
+        header('Location: ' . $path);
+        exit;
+    }
+
+    header('Location: ' . app_url($path));
     exit;
 }
 

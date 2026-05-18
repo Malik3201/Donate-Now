@@ -7,6 +7,50 @@ body.landing-body.auth-page {
   overflow-x: hidden;
 }
 
+/* Beat global dark-theme form rules (variables.css / base.css) on light auth surfaces */
+body.landing-body.auth-page .auth-form-wrap,
+body.landing-body.auth-page .auth-form-card,
+body.landing-body.auth-page .auth-shell {
+  color: var(--dn-text, #2a2420);
+}
+
+body.landing-body.auth-page label,
+body.landing-body.auth-page legend {
+  color: var(--dn-text, #2a2420);
+}
+
+body.landing-body.auth-page input,
+body.landing-body.auth-page textarea,
+body.landing-body.auth-page select {
+  color: var(--dn-text, #2a2420);
+  -webkit-text-fill-color: var(--dn-text, #2a2420);
+  background: #fff;
+}
+
+body.landing-body.auth-page input::placeholder,
+body.landing-body.auth-page textarea::placeholder {
+  color: #8a7d72;
+  opacity: 1;
+}
+
+body.landing-body.auth-page input:-webkit-autofill,
+body.landing-body.auth-page input:-webkit-autofill:hover,
+body.landing-body.auth-page input:-webkit-autofill:focus,
+body.landing-body.auth-page textarea:-webkit-autofill,
+body.landing-body.auth-page select:-webkit-autofill {
+  -webkit-text-fill-color: var(--dn-text, #2a2420);
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 99999s ease-out 0s;
+}
+
+body.landing-body.auth-page .auth-visual-inner h1 {
+  color: #fff;
+}
+
+body.landing-body.auth-page .auth-visual-inner p {
+  color: rgba(255, 249, 242, 0.86);
+}
+
 body.landing-body.auth-page ::selection {
   background: rgba(182, 94, 60, 0.28);
   color: var(--color-dark);

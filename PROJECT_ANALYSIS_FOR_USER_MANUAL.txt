@@ -1,0 +1,1019 @@
+================================================================================
+                    DONATE NOW — PROJECT ANALYSIS
+          (Source: full codebase review — for User Manual PDF preparation)
+================================================================================
+Generated from codebase scan. Secrets are NOT included — only variable names.
+Last reviewed structure: PHP monolith on XAMPP, MySQL database `donate_now`.
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+1.1 What is this project?
+-------------------------
+Donate Now is a web-based donation management platform for local/community
+giving in Pakistan-style contexts (PKR currency, EasyPaisa/JazzCash/bank methods).
+It is NOT a payment-gateway checkout app. Donors pay NGOs through offline/digital
+wallets or bank transfer, then upload payment proof (screenshot + transaction ID).
+NGOs verify proofs; admins oversee users, campaigns, donations, and safety reports.
+
+Primary codebase path: d:\xamp\htdocs\Donate-Now (typical URL: APP_URL in .env,
+e.g. http://localhost/Donate-Now)
+
+1.2 What problem does it solve?
+-------------------------------
+- Lack of transparency in informal donations (no proof trail).
+- NGOs managing scattered payment proofs and campaign data.
+- Donors unable to track whether a donation was acknowledged.
+- Need for admin moderation (fake NGO, fake campaign, fraud reports).
+- Volunteers wanting to join campaigns with a clear request/accept flow.
+
+1.3 Target users
+----------------
+| Role       | Who they are                                      |
+|------------|---------------------------------------------------|
+| Donor      | Individuals/orgs who give money to campaigns      |
+| NGO        | Registered organizations running campaigns        |
+| Volunteer  | People offering time/skills for campaigns         |
+| Admin      | Platform operators (moderation, analytics)        |
+| Guest      | Visitors browsing public home/campaign pages      |
+
+1.4 Main purpose
+----------------
+Connect donors, verified NGOs, and volunteers on one platform where:
+- Every donation has uploaded proof and a visible status (pending/confirmed/rejected/flagged).
+- Campaigns go through approval before broad visibility.
+- NGOs are verified before full trust signals apply.
+- Reports and account controls protect the community.
+
+Reference: index.php (marketing story), includes/CODE_GUIDE.php
+
+================================================================================
+2. PROJECT STRUCTURE
+================================================================================
+
+2.1 High-level folder tree
+--------------------------
+Donate-Now/
+├── index.php                 # Public home / landing page (main marketing entry)
+├── config/                   # Environment, DB, email, ImageKit config
+├── includes/                 # Shared PHP libraries & layout partials
+├── auth/                     # Login, register, logout, password reset
+├── admin/                    # Admin-only dashboards & actions
+├── ngo/                      # NGO dashboards & campaign/donation tools
+├── donor/                    # Donor dashboards & donation flow
+├── volunteer/                # Volunteer dashboards & join requests
+├── profile/                  # Profile view/edit (all logged-in roles)
+├── public/                   # Public campaign list & detail (no login)
+├── pages/                    # Static pages (about, contact, privacy, terms)
+├── reports/                  # Safety/fraud report submission & list
+├── notifications/            # In-app notifications
+├── database/                 # schema.sql, migrations, seed, run_migration
+├── assets/
+│   ├── css/                  # Stylesheets (landing, dashboard, auth, mobile)
+│   ├── js/                   # Client scripts (landing, dashboard, maps, forms)
+│   └── logo-icon.png         # Brand logo
+├── uploads/                  # Local upload fallback (gitignored if used)
+├── .env                      # Secrets & config (NOT in git)
+├── README.md                 # Quick setup
+├── includes/CODE_GUIDE.php   # In-repo developer map (not loaded at runtime)
+└── PROJECT_ANALYSIS_FOR_USER_MANUAL.txt  # This file
+
+2.2 Entry points (URLs map to PHP files directly — no front controller)
+-----------------------------------------------------------------------
+PUBLIC (no login):
+  - index.php                          Home / landing
+  - public/campaigns.php               Browse campaigns (guest)
+  - public/campaign_detail.php         Campaign detail (guest)
+  - pages/about.php, contact.php, privacy-policy.php, terms.php
+
+AUTH:
+  - auth/login.php
+  - auth/register.php?role=donor|ngo|volunteer
+  - auth/logout.php
+  - auth/forgot_password.php
+  - auth/reset_password.php
+
+DASHBOARDS (login required — see includes/dashboard_sidebar.php per role):
+  - admin/dashboard.php
+  - ngo/dashboard.php
+  - donor/dashboard.php
+  - volunteer/dashboard.php
+
+2.3 Configuration files
+-----------------------
+| File                    | Role                                              |
+|-------------------------|---------------------------------------------------|
+| .env                    | All secrets & environment-specific URLs           |
+| config/app.php          | Session start, .env loader, APP_URL constant        |
+| config/database.php     | PDO MySQL connection (db())                         |
+| config/brevo.php        | Email API/SMTP settings reader                      |
+| config/imagekit.php     | Image CDN upload credentials                        |
+
+2.4 Important includes (shared logic)
+-------------------------------------
+| File                           | Role                                        |
+|--------------------------------|---------------------------------------------|
+| includes/functions.php         | sanitize, redirect, session, CSRF, logging  |
+| includes/auth_check.php        | Force login + $authUser, $pdo                 |
+| includes/role_check.php        | require_role([...])                           |
+| includes/ui_helpers.php        | Logo, assets, placeholders, mobile CSS      |
+| includes/public_header.php     | Public site HTML head + navbar                |
+| includes/public_footer.php     | Public footer + landing.js                    |
+| includes/dashboard_layout_*.php| Dashboard shell (sidebar, topbar)           |
+| includes/dashboard_sidebar.php | Role-based menu items                         |
+| includes/mail_helper.php       | Transactional emails (Brevo)                  |
+| includes/upload_helper.php     | ImageKit file uploads                         |
+| includes/notification_helper.php | In-app notifications                      |
+| includes/report_functions.php  | Report creation helpers                       |
+| includes/location_helpers.php  | Leaflet maps for NGO/campaign location        |
+| includes/static_pages.php      | Static page wrapper                           |
+| includes/landing_carousel.php  | Home page carousels (mobile)                  |
+| includes/breadcrumbs.php       | Dashboard breadcrumbs                         |
+| includes/flash_messages.php    | Success/error toasts                          |
+| includes/email_template.php    | HTML email layout                             |
+
+2.5 Orphan / legacy files (present but not linked in main nav)
+--------------------------------------------------------------
+- pages/how-it-works.php   — Old stub; content duplicated on index.php
+- pages/faqs.php           — Old stub; FAQ section is on index.php (#faq)
+These may still exist on disk but are NOT in includes/public_header.php navigation.
+Recommended: remove or redirect to index.php for production.
+
+================================================================================
+3. TECHNOLOGY STACK
+================================================================================
+
+3.1 Frontend
+------------
+- Technology: Server-rendered HTML from PHP templates (NOT React/Vue/Angular).
+- JavaScript: Vanilla JS in assets/js/ (landing.js, navbar.js, main.js, forms.js,
+  modals.js, dashboard.js, location-map.js, auth-pages.js).
+- CSS: Plain CSS files (no Tailwind/Bootstrap as primary framework).
+  - assets/css/variables.css, base.css, layout.css, components.css
+  - assets/css/landing.css (home)
+  - assets/css/dashboard.css (logged-in app)
+  - assets/css/dashboard-responsive.css
+  - assets/css/auth.css
+  - assets/css/static-pages.css
+  - assets/css/mobile-app.css (max-width media queries only)
+  - assets/css/brand.css, forms.css, tables.css, location-map.css
+- Fonts: Google Fonts (Inter) via includes/public_header.php
+- Maps: Leaflet + OpenStreetMap + Nominatim (assets/js/location-map.js)
+- State management: None (no Redux/Vuex). State = PHP session + page reload.
+- Build tools: Not clearly found in codebase (no package.json, no Vite/Webpack).
+
+3.2 Backend
+-----------
+- PHP 8+ (declare(strict_types=1) used widely).
+- Architecture: Page-based PHP (each .php file = one route/screen or POST handler).
+- No Laravel/Symfony/CodeIgniter framework detected.
+- No separate REST API layer; json_response() exists in includes/functions.php but
+  is NOT clearly used by other files for AJAX APIs.
+
+3.3 Database
+--------------
+- MySQL (InnoDB), schema in database/schema.sql
+- Access: PDO via config/database.php → db()
+- Migrations: database/migrations/add_location_columns.sql +
+  database/run_migration.php (manual runner)
+
+3.4 Authentication
+------------------
+- PHP sessions ($_SESSION['user_id'], role, email, full_name).
+- Passwords: password_hash() / password_verify() (bcrypt default).
+- Guards: includes/auth_check.php (login + active account),
+  includes/role_check.php (role whitelist per page).
+- CSRF: csrf_token() / verify_csrf_token() on sensitive POST forms.
+- Password reset: password_resets table + auth/forgot_password.php,
+  auth/reset_password.php.
+
+3.5 APIs
+--------
+- Not a JSON REST API application.
+- "Endpoints" are PHP file paths; browser uses GET (pages) and POST (forms).
+- External HTTP calls: Brevo (email), ImageKit (uploads) from server-side PHP.
+
+3.6 Package manager / deployment
+--------------------------------
+- No Composer.json clearly found in project root scan.
+- No npm/package.json.
+- Deployment target: Typical PHP hosting (Apache/XAMPP, shared VPS, cPanel).
+  Not designed for Vercel/Netlify (static) as primary — needs PHP + MySQL.
+
+================================================================================
+4. FRONTEND ANALYSIS
+================================================================================
+
+4.1 Overall frontend flow
+-------------------------
+1. Guest visits index.php → marketing sections, optional browse public campaigns.
+2. User registers (auth/register.php) or logs in (auth/login.php).
+3. Session cookie set → redirected to role dashboard.
+4. All app screens use dashboard layout: sidebar + topbar + content.
+5. Forms POST back to same or dedicated action PHP files.
+6. Page reload shows flash/toast messages (includes/flash_messages.php).
+
+4.2 Main screens by area
+--------------------------
+
+PUBLIC MARKETING (index.php + assets/css/landing.css + landing.js):
+  - Hero with CTAs (Explore Campaigns, Register, Register NGO)
+  - Impact statistics (from DB or fallback numbers)
+  - About Us section (#about)
+  - How It Works timeline
+  - Featured campaigns (carousel on mobile ≤992px, grid on desktop)
+  - Transparency flow, NGO/Donor/Volunteer sections
+  - Safety, Records, Community voices, FAQ accordion, Final CTA
+
+STATIC PAGES (pages/*.php + static-pages.css):
+  - About, Contact, Privacy Policy, Terms
+  - Contact form: UI only — onsubmit="return false;" (no backend save)
+    File: pages/contact.php
+
+PUBLIC CAMPAIGNS (public/campaigns.php, public/campaign_detail.php):
+  - Guest can view campaigns and details; donate requires login as donor.
+
+AUTH PAGES (auth/*.php + auth.css + auth-pages.js):
+  - Split layout: visual panel + form
+  - Login, Register (role-specific fields), Forgot/Reset password
+
+DONOR (donor/*.php + dashboard.css):
+  - dashboard.php — summary
+  - browse_campaigns.php — filter/search campaigns
+  - campaign_detail.php — campaign info + link to donate
+  - donate.php — multi-step donation + proof upload
+  - my_donations.php, donation_detail.php — history
+  - donation_reports.php, reports.php — reporting
+  - ngo_detail.php — NGO public detail in dashboard context
+
+NGO (ngo/*.php):
+  - dashboard, my_campaigns, create_campaign, edit_campaign, campaign_detail
+  - campaign_updates.php — post updates
+  - payment_methods.php, create/edit payment method
+  - donation_dashboard.php — review proofs
+  - donation_action.php — POST confirm/reject/flag (no HTML UI)
+  - volunteer_requests.php, volunteer_action.php
+  - donation_reports.php, reports.php
+
+VOLUNTEER (volunteer/*.php):
+  - dashboard, browse_campaigns, join_campaign.php (POST request)
+  - my_campaigns.php, cancel_request.php
+  - reports.php, ngo_detail.php
+
+ADMIN (admin/*.php):
+  - dashboard, manage_users, user_detail, user_action.php (POST)
+  - verify_ngos.php
+  - manage_campaigns, campaign_detail, campaign_action.php (POST)
+  - all_donations, donation_detail
+  - reports, report_detail, report_action.php (POST)
+  - analytics.php (charts/KPIs)
+  - admin_notes.php, email_test.php
+  - donor_detail, volunteer_detail, ngo_detail
+
+PROFILE (profile/*.php — all roles):
+  - view_profile.php, update_profile.php, upload_profile_photo.php
+  - change_password.php
+
+NOTIFICATIONS:
+  - notifications/index.php, mark_read.php, mark_all_read.php
+
+4.3 UI components (purpose)
+---------------------------
+| Component              | Where                         | Purpose                    |
+|------------------------|-------------------------------|----------------------------|
+| Navbar / mobile drawer | public_header, dashboard    | Navigation                 |
+| Sidebar                | dashboard_sidebar.php         | Role menu                  |
+| glass-card / form-card | dashboard pages               | Content containers         |
+| Tables (.table-wrapper)| lists (donations, users)      | Data tables                |
+| status-badge / dn-badge| everywhere                    | Status/role chips          |
+| progress-bar           | campaigns                     | Funding progress           |
+| FAQ accordion          | index.php + landing.js        | Expand/collapse FAQ        |
+| Carousels              | index.php (mobile)            | Horizontal card scroll     |
+| Map picker             | create/edit campaign, profile | Lat/long via Leaflet       |
+| Modals                 | assets/js/modals.js           | Popup dialogs (where used) |
+| Toast / flash          | flash_messages.php            | Feedback after actions     |
+| Breadcrumbs            | breadcrumbs.php               | Location context           |
+
+4.4 Frontend ↔ backend communication
+--------------------------------------
+- Standard HTML <form method="post" enctype="multipart/form-data"> for uploads.
+- GET query strings for filters (e.g. browse_campaigns category, NGO filters).
+- No central fetch()/axios API client found.
+- CSRF hidden input: name="csrf_token" on protected forms (e.g. donor/donate.php).
+- After POST, server usually redirect() to PRG pattern (Post-Redirect-Get).
+
+4.5 Validation (where)
+----------------------
+| Layer    | Location                                      |
+|----------|-----------------------------------------------|
+| Client   | HTML5 required, some JS (forms.js, landing.js)|
+| Server   | Each PHP file validates $_POST before DB      |
+| Examples | auth/register.php — email, password strength  |
+|          | donor/donate.php — amount, TID, proof file    |
+|          | ngo/donation_action.php — action, note rules  |
+
+================================================================================
+5. BACKEND ANALYSIS
+================================================================================
+
+5.1 Architecture pattern
+------------------------
+Classic "PHP page + include" architecture:
+  Browser → Apache → specific .php file
+    → config/database.php + includes
+    → auth_check / role_check (if protected)
+    → business logic + SQL in same file (or small helpers)
+    → HTML output or redirect()
+
+There are no separate Controller/Model classes in MVC sense. Database tables are
+queried directly with PDO prepared statements in page files.
+
+5.2 Request–response flow (typical protected page)
+--------------------------------------------------
+1. User requests /donor/browse_campaigns.php (GET).
+2. auth_check.php: session? active account? → $authUser, $pdo.
+3. role_check.php: require_role(['donor']).
+4. dashboard_layout_start.php: HTML head, sidebar, topbar, open content.
+5. Page runs SELECT queries, renders HTML.
+6. dashboard_layout_end.php: footer, scripts.
+
+POST action example (ngo/donation_action.php):
+1. POST only; else 405.
+2. Verify CSRF + role.
+3. UPDATE donations, campaigns, profiles; INSERT history; notifications; emails.
+4. redirect() back to listing/detail.
+
+5.3 Security
+------------
+| Concern           | Implementation                                      |
+|-------------------|-----------------------------------------------------|
+| Authentication  | Session user_id                                     |
+| Authorization   | role_check.php per directory                        |
+| Account state   | account_status must be 'active' to use app          |
+| CSRF            | csrf_token on forms                                 |
+| XSS             | sanitize() = htmlspecialchars on output             |
+| SQL injection   | PDO prepared statements (observed pattern)          |
+| Passwords       | password_hash / password_verify                     |
+| File uploads    | ImageKit or validated upload helper                 |
+| Admin actions   | require_role(['admin']) on admin/* actions          |
+
+5.4 Error handling
+------------------
+- Many action scripts: exit('plain text message') on validation failure.
+- DB connection failure: config/database.php exits with HTTP 500 message.
+- Registration: try/catch with transaction rollback.
+- Not a unified JSON error middleware.
+
+5.5 Email & notifications
+---------------------------
+- includes/mail_helper.php — Brevo API or SMTP (config/brevo.php).
+- includes/notification_helper.php — INSERT into notifications table.
+- Triggers: registration, donation proof, NGO verify, campaign status, etc.
+
+5.6 File uploads
+----------------
+- includes/upload_helper.php → ImageKit API (config/imagekit.php).
+- Used for: campaign images, donation proof, profile photo, report attachments.
+- ui_helpers.php image_or_placeholder() when no image URL.
+
+================================================================================
+6. ENVIRONMENT VARIABLES
+================================================================================
+(Sensitive values must NOT be committed. Only names and purpose below.)
+
+| Variable              | Purpose                                              |
+|-----------------------|------------------------------------------------------|
+| APP_URL               | Base URL for links, redirects, assets (must match    |
+|                       | how users access the site, e.g. http://localhost/    |
+|                       | Donate-Now)                                          |
+| DB_HOST               | MySQL hostname (usually localhost)                   |
+| DB_NAME               | MySQL database name (schema uses donate_now)         |
+| DB_USER               | MySQL username                                       |
+| DB_PASS               | MySQL password                                       |
+| BREVO_API_KEY         | Brevo transactional email API key (xkeysib-...)      |
+|                       | Optional if using SMTP instead                       |
+| BREVO_SMTP_HOST       | SMTP host (default smtp-relay.brevo.com)             |
+| BREVO_SMTP_PORT       | SMTP port (default 587)                              |
+| BREVO_SMTP_USER       | SMTP login user                                      |
+| BREVO_SMTP_PASS       | SMTP password (xsmtpsib-... for SMTP)                |
+| BREVO_FROM_EMAIL      | Sender email address                                 |
+| BREVO_FROM_NAME       | Sender display name (default Donate Now)             |
+| ADMIN_EMAIL           | Comma-separated admin inbox(es) for alert emails     |
+| EMAIL_LOGO_URL        | HTTPS URL for logo in emails (CDN); optional         |
+| IMAGEKIT_PUBLIC_KEY   | ImageKit public key for uploads                      |
+| IMAGEKIT_PRIVATE_KEY  | ImageKit private key (server-side only)              |
+| IMAGEKIT_URL_ENDPOINT | ImageKit URL endpoint for delivered images           |
+
+Development: .env on local XAMPP with local DB and test Brevo/ImageKit keys.
+Production: Same variables on server; APP_URL must be production domain;
+strong DB password; never expose .env publicly.
+
+Not clearly found in codebase: separate APP_DEBUG, REDIS, QUEUE variables.
+
+================================================================================
+7. FEATURES (DETAILED)
+================================================================================
+
+7.1 User registration & login
+-----------------------------
+What: Donor, NGO, Volunteer self-register; Admin not self-register (seed only).
+Flow: auth/register.php → creates users + role profile → email → login.
+Files: auth/register.php, auth/login.php, auth/logout.php, database/seed.php (admin)
+DB: users, donor_profiles | ngo_profiles | volunteer_profiles
+
+7.2 NGO verification (admin)
+----------------------------
+What: Admin approves/rejects NGO profiles before full trust.
+Flow: NGO registers (verification_status=pending) → admin/verify_ngos.php
+Files: admin/verify_ngos.php, admin/ngo_detail.php
+DB: ngo_profiles.verification_status, verification_notes
+
+7.3 Campaign management (NGO + admin)
+-------------------------------------
+What: NGO creates campaign (pending); admin approves/rejects/activates/completes.
+Flow: ngo/create_campaign.php → admin/manage_campaigns.php → campaign_action.php
+Files: ngo/create_campaign.php, ngo/edit_campaign.php, ngo/my_campaigns.php,
+       admin/campaign_action.php, admin/campaign_detail.php
+DB: campaigns, campaign_updates, campaign_categories
+Optional: location_label, latitude, longitude (maps)
+
+7.4 Payment methods (NGO)
+-------------------------
+What: NGO adds EasyPaisa, JazzCash, bank, or other account details.
+Flow: ngo/payment_methods.php, create_payment_method.php, edit_payment_method.php
+DB: ngo_payment_methods
+
+7.5 Donation with manual proof (core feature)
+---------------------------------------------
+What: Donor selects NGO payment method, pays externally, uploads screenshot + TID.
+Flow:
+  1. donor/browse_campaigns.php → campaign_detail → donate.php
+  2. POST creates donations row status=pending
+  3. NGO gets notification + email
+  4. ngo/donation_dashboard.php → confirm/reject/flag via donation_action.php
+  5. On confirm: updates collected_amount, donor/ngo totals, emails donor
+Files: donor/donate.php, ngo/donation_action.php, donor/my_donations.php
+DB: donations, donation_status_history
+
+Note: No Stripe/JazzCash API integration — manual proof only (stated on index FAQ).
+
+7.6 Volunteer join requests
+---------------------------
+What: Volunteer requests to join campaign; NGO accepts/rejects.
+Flow: volunteer/join_campaign.php → ngo/volunteer_requests.php → volunteer_action.php
+DB: volunteer_campaigns
+
+7.7 Safety reports
+------------------
+What: Logged-in users report fake NGO/campaign/payment, abuse, fraud, etc.
+Flow: reports/create_report.php (role-aware targets) → admin/reports.php
+Files: includes/report_functions.php, admin/report_action.php
+DB: reports
+
+7.8 Admin user moderation
+-------------------------
+What: Admin can activate, block, suspend, temporary_hold users with reason.
+Flow: admin/manage_users.php → user_action.php (POST)
+DB: users.account_status, account_status_history
+
+7.9 In-app notifications
+------------------------
+What: Bell menu items link to notifications/index.php; mark read/all read.
+DB: notifications
+Files: includes/notification_helper.php, notifications/*.php
+
+7.10 Analytics (admin)
+----------------------
+What: KPIs and charts for platform overview.
+File: admin/analytics.php
+
+7.11 Profile & password
+-----------------------
+What: View/edit profile, upload photo, change password.
+Files: profile/view_profile.php, update_profile.php, upload_profile_photo.php,
+       change_password.php
+
+7.12 Public marketing site
+--------------------------
+What: Landing page with stats, carousels, FAQ, CTAs.
+File: index.php, assets/css/landing.css, assets/js/landing.js
+
+7.13 Email notifications
+-------------------------
+What: Transactional emails via Brevo (API or SMTP).
+Files: includes/mail_helper.php, includes/email_template.php, config/brevo.php
+Test: admin/email_test.php
+
+7.14 Location maps
+------------------
+What: Pick/display campaign and NGO locations on maps.
+Files: includes/location_helpers.php, assets/js/location-map.js,
+       assets/css/location-map.css
+
+================================================================================
+8. COMPLETE APPLICATION FLOW
+================================================================================
+
+8.1 Guest journey
+-----------------
+1. Open APP_URL/index.php — read marketing content.
+2. Optional: public/campaigns.php → public/campaign_detail.php.
+3. Click Register → auth/register.php (choose role).
+4. Or Login → auth/login.php.
+
+8.2 Donor end-to-end
+--------------------
+1. Register as donor → login → donor/dashboard.php.
+2. Browse donor/browse_campaigns.php (filters).
+3. Open campaign → donor/campaign_detail.php → Donate.
+4. donor/donate.php:
+   - See campaign summary
+   - Select NGO payment method (copy account number)
+   - Pay outside the app (EasyPaisa/JazzCash/bank)
+   - Enter amount, TID, upload proof image, submit
+5. Status pending → donor/my_donations.php.
+6. NGO confirms → status confirmed, collected amount increases, emails sent.
+7. Optional: reports/create_report.php if fraud suspected.
+
+8.3 NGO end-to-end
+------------------
+1. Register as NGO (pending verification).
+2. Admin verifies NGO → verification_status=verified.
+3. Add payment methods (ngo/payment_methods.php).
+4. Create campaign (pending) → wait for admin approval.
+5. Campaign approved/active → visible to donors.
+6. Receive donation proofs → ngo/donation_dashboard.php.
+7. Confirm or reject each donation (with note).
+8. Manage volunteer requests.
+9. Post campaign updates (campaign_updates.php).
+
+8.4 Volunteer end-to-end
+------------------------
+1. Register → login → volunteer/dashboard.php.
+2. Browse campaigns → join_campaign (POST) with message.
+3. NGO accepts/rejects → volunteer/my_campaigns.php shows status.
+
+8.5 Admin end-to-end
+--------------------
+1. Login (account from database/seed.php in dev).
+2. Review verify_ngos, manage_campaigns, all_donations, reports.
+3. Moderate users (block/suspend), resolve reports, view analytics.
+4. Optional email_test for mail config.
+
+8.6 Password reset flow
+-----------------------
+1. auth/forgot_password.php — enter email, token stored in password_resets.
+2. Email with reset link (if mail configured).
+3. auth/reset_password.php — set new password.
+
+================================================================================
+9. API DOCUMENTATION
+================================================================================
+
+IMPORTANT: This project does NOT expose a separate REST API for mobile/SPA.
+All interactions are browser navigation and HTML form POSTs to PHP files.
+
+Below: "Logical endpoints" = PHP scripts treated as HTTP endpoints.
+
+9.1 Convention
+----------------
+- GET  = display page (unless action-only script)
+- POST = submit form or action
+- Auth = Session cookie required
+- CSRF = csrf_token field required on POST (where implemented)
+
+9.2 Authentication pages
+------------------------
+| Method | Path                      | Auth | Purpose              |
+|--------|---------------------------|------|----------------------|
+| GET    | auth/login.php            | No   | Login form           |
+| POST   | auth/login.php            | No   | Process login        |
+| GET    | auth/register.php         | No   | Registration form    |
+| POST   | auth/register.php         | No   | Create account       |
+| GET    | auth/logout.php           | Yes* | Destroy session      |
+| GET/POST | auth/forgot_password.php| No   | Request reset        |
+| GET/POST | auth/reset_password.php | No*  | Reset with token     |
+*logout typically needs session; reset uses token not session
+
+9.3 Donor POST actions
+----------------------
+| Method | Path                   | Auth   | Body (main fields)                    |
+|--------|------------------------|--------|---------------------------------------|
+| POST   | donor/donate.php       | Donor  | campaign_id, payment_method_id,       |
+|        |                        |        | amount, transaction_reference,        |
+|        |                        |        | proof_image (file), csrf_token        |
+
+Response: Redirect to donor/my_donations.php on success; HTML errors on page.
+
+9.4 NGO POST actions
+--------------------
+| Method | Path                      | Auth | Body fields                          |
+|--------|---------------------------|------|--------------------------------------|
+| POST   | ngo/donation_action.php   | NGO  | donation_id, action (confirm/reject/ |
+|        |                           |      | flag), note, csrf_token              |
+| POST   | ngo/volunteer_action.php  | NGO  | request id, accept/reject, csrf      |
+| POST   | ngo/create_campaign.php   | NGO  | campaign fields, image, location     |
+| POST   | ngo/edit_campaign.php     | NGO  | campaign update fields               |
+
+9.5 Admin POST actions
+----------------------
+| Method | Path                     | Auth  | Purpose                            |
+|--------|--------------------------|-------|------------------------------------|
+| POST   | admin/user_action.php    | Admin | activate/block/suspend user        |
+| POST   | admin/campaign_action.php| Admin | approve/reject/activate campaign   |
+| POST   | admin/report_action.php  | Admin | resolve/reject report              |
+| POST   | admin/verify_ngos.php    | Admin | verify/reject NGO (form on page)   |
+
+9.6 Volunteer POST actions
+----------------------------
+| Method | Path                        | Auth      | Purpose              |
+|--------|-----------------------------|-----------|----------------------|
+| POST   | volunteer/join_campaign.php | Volunteer | Join request         |
+| POST   | volunteer/cancel_request.php| Volunteer | Cancel request       |
+
+9.7 Profile POST
+----------------
+| Method | Path                            | Auth | Purpose           |
+|--------|---------------------------------|------|-------------------|
+| POST   | profile/update_profile.php      | Yes  | Update fields     |
+| POST   | profile/upload_profile_photo.php| Yes| Upload photo      |
+| POST   | profile/change_password.php     | Yes  | Change password   |
+
+9.8 Notifications
+-----------------
+| Method | Path                           | Auth | Purpose        |
+|--------|--------------------------------|------|----------------|
+| POST   | notifications/mark_read.php    | Yes  | Mark one read  |
+| POST   | notifications/mark_all_read.php| Yes  | Mark all read  |
+
+9.9 Reports
+-----------
+| Method | Path                    | Auth | Purpose              |
+|--------|-------------------------|------|----------------------|
+| GET/POST | reports/create_report.php | Yes | Submit report form |
+
+9.10 JSON API
+-------------
+Not clearly found in codebase as implemented endpoints.
+includes/functions.php defines json_response() but no widespread consumer found.
+
+================================================================================
+10. DATABASE / DATA MODELS
+================================================================================
+
+Database name (schema): donate_now
+
+10.1 Core tables
+----------------
+
+users
+  Purpose: Login account for all roles.
+  Key fields: email (unique), password (hash), role (admin|donor|ngo|volunteer),
+  account_status (active|inactive|blocked|suspended|temporary_hold),
+  profile_photo_url, email_verified.
+
+donor_profiles
+  Purpose: Donor-specific data (1:1 users).
+  FK: user_id → users.id
+  Fields: address, donor_type, total_donations_count, total_donated_amount.
+
+ngo_profiles
+  Purpose: NGO organization profile (1:1 users).
+  FK: user_id → users.id
+  Fields: ngo_name, registration_number, description, address,
+  latitude, longitude, verification_status, totals.
+
+volunteer_profiles
+  Purpose: Volunteer skills/availability (1:1 users).
+  FK: user_id → users.id
+
+10.2 Campaigns & donations
+
+campaign_categories
+  Purpose: Optional category labels for campaigns.
+
+campaigns
+  Purpose: Fundraising campaigns owned by NGO.
+  FK: ngo_id → ngo_profiles.id, category_id → campaign_categories.id
+  Key fields: title, description, target_amount, collected_amount,
+  status (pending|approved|rejected|active|completed|temporary_hold),
+  image_url, location_label, lat/long, dates.
+
+campaign_updates
+  Purpose: Progress news posts on a campaign.
+  FK: campaign_id → campaigns.id
+
+ngo_payment_methods
+  Purpose: How donors pay this NGO (wallet/bank details).
+  FK: ngo_id → ngo_profiles.id
+  Fields: method_type (easypaisa|jazzcash|bank|other), account numbers.
+
+donations
+  Purpose: One donation attempt with proof.
+  FK: donor_id → donor_profiles.id, ngo_id, campaign_id, payment_method_id
+  Key fields: amount, transaction_reference, proof_image_url,
+  status (pending|confirmed|rejected|flagged), verification note, timestamps.
+
+donation_status_history
+  Purpose: Audit trail of status changes.
+  FK: donation_id, changed_by_user_id
+
+10.3 Volunteers
+
+volunteer_campaigns
+  Purpose: Join request / membership.
+  FK: volunteer_id, campaign_id, ngo_id
+  status: pending|accepted|rejected|cancelled
+
+10.4 Trust & safety
+
+reports
+  Purpose: User-submitted complaints.
+  FK: reporter_user_id, optional reported_user/campaign/donation
+  report_type: fake_payment, fake_ngo, fake_campaign, abuse, fraud, etc.
+  status: open|under_review|resolved|rejected
+
+account_status_history
+  Purpose: Admin changes to user account_status.
+
+admin_notes
+  Purpose: Internal admin notes on users/campaigns/donations/reports.
+
+10.5 System
+
+notifications — per-user in-app messages.
+password_resets — reset tokens.
+email_logs — outbound email log.
+activity_logs — actor actions for audit.
+
+10.6 Entity relationship (simplified)
+-------------------------------------
+users 1──1 donor_profiles | ngo_profiles | volunteer_profiles
+ngo_profiles 1──* campaigns
+campaigns 1──* donations *──1 donor_profiles
+ngo_profiles 1──* ngo_payment_methods
+donations *──1 ngo_payment_methods
+volunteer_profiles *──* campaigns (via volunteer_campaigns)
+users 1──* reports (as reporter)
+
+================================================================================
+11. INSTALLATION & SETUP GUIDE
+================================================================================
+
+11.1 Requirements
+-----------------
+- PHP 8.0+ with extensions: pdo_mysql, mbstring, curl, fileinfo (recommended)
+- MySQL 5.7+ / MariaDB
+- Apache (XAMPP/WAMP/LAMP) with mod_rewrite optional (not required for basic)
+- Composer: Not clearly required by codebase
+- Node.js: Not required (no frontend build step)
+
+11.2 Local setup (XAMPP example)
+--------------------------------
+1. Clone/copy project to htdocs/Donate-Now
+2. Create MySQL database:
+     mysql -u root -p < database/schema.sql
+   Or import database/schema.sql via phpMyAdmin.
+3. Optional location columns if schema older:
+     php database/run_migration.php
+4. Create .env in project root (copy from team template):
+     APP_URL=http://localhost/Donate-Now
+     DB_HOST=localhost
+     DB_NAME=donate_now
+     DB_USER=root
+     DB_PASS=
+     (plus Brevo and ImageKit keys if testing email/uploads)
+5. Start Apache + MySQL in XAMPP.
+6. Open APP_URL in browser.
+
+11.3 Create admin user (development)
+------------------------------------
+     php database/seed.php
+   Default from seed (see database/seed.php): admin@localdonation.com / admin123
+   Change immediately in production.
+
+11.4 Frontend / backend run separately?
+----------------------------------------
+Not applicable — single PHP application. No separate Node dev server.
+Apache serves both PHP and static assets/css, assets/js.
+
+11.5 Troubleshooting setup
+--------------------------
+- Blank page: enable PHP error log; check DB credentials in .env.
+- CSS broken: verify APP_URL matches actual folder path.
+- Upload fails: configure ImageKit keys or check upload_helper fallback behavior.
+- Email not sent: configure Brevo; test admin/email_test.php as admin.
+
+================================================================================
+12. DEPLOYMENT GUIDE
+================================================================================
+
+12.1 Suitable platforms
+-----------------------
+- VPS / dedicated server (Apache or Nginx + PHP-FPM) — best fit
+- Shared hosting (cPanel) with PHP + MySQL
+- NOT ideal: Static hosts only (Netlify/Vercel) without PHP runtime
+
+12.2 Build command
+------------------
+Not clearly found in codebase — no npm run build or composer build.
+Deploy = copy PHP files + assets to server.
+
+12.3 Production checklist
+-------------------------
+1. Set APP_URL to https://yourdomain.com (no trailing path mismatch).
+2. Strong DB credentials; restrict MySQL remote access.
+3. Secure .env outside web root if possible (or deny HTTP access).
+4. Enable HTTPS (SSL certificate).
+5. Remove or protect database/seed.php and admin/email_test.php.
+6. Configure Brevo production sender domain (SPF/DKIM).
+7. Configure ImageKit production keys.
+8. Set ADMIN_EMAIL for alert routing.
+9. Import schema.sql on production DB.
+10. file permissions: uploads/ writable if local fallback used.
+
+12.4 Apache document root
+-------------------------
+Point document root to project folder (where index.php lives) or subdirectory.
+Ensure .env is not publicly downloadable.
+
+================================================================================
+13. USER MANUAL CONTENT (NON-TECHNICAL)
+================================================================================
+
+13.1 What is Donate Now? (for end users)
+----------------------------------------
+Donate Now helps you support local causes with clear records. You choose a
+campaign, pay the NGO using their Easypaisa/JazzCash or bank details, then upload
+your payment screenshot and transaction ID. The NGO reviews your proof and marks
+the donation as confirmed when valid.
+
+13.2 Getting started as a Donor
+-------------------------------
+1. Click "Create Account" or Register on the website.
+2. Choose "Donor" as your role.
+3. Log in and open "Browse Campaigns."
+4. Pick a campaign you want to support (only approved/active campaigns accept donations).
+5. Click Donate and follow the steps:
+   - Note the NGO payment account details.
+   - Send money using your phone wallet or bank app.
+   - Enter the amount and transaction ID (TID) exactly as on your receipt.
+   - Upload a clear screenshot of the payment.
+6. Wait for the NGO to confirm. Check "My Donations" for status.
+
+13.3 Getting started as an NGO
+------------------------------
+1. Register as NGO (provide organization details).
+2. Wait for platform admin to verify your NGO.
+3. Add at least one Payment Method (Easypaisa/JazzCash/Bank).
+4. Create a campaign (title, goal, story, image).
+5. Wait for admin to approve the campaign.
+6. When donors submit proofs, open Donation Dashboard and Confirm or Reject each one.
+7. Manage volunteer requests from the Volunteer Requests page.
+
+13.4 Getting started as a Volunteer
+-----------------------------------
+1. Register as Volunteer.
+2. Browse campaigns and send a Join request with a short message.
+3. If the NGO accepts, you will see the campaign under My Campaigns.
+
+13.5 Public pages (no login)
+----------------------------
+| Page            | Purpose                                      |
+|-----------------|----------------------------------------------|
+| Home            | Learn about the platform                     |
+| Browse (public) | See campaigns without account                |
+| About Us        | Mission and values                           |
+| Contact Us      | Contact details (form is display-only)       |
+| Privacy / Terms | Legal information                            |
+
+13.6 Common user actions
+------------------------
+- Update profile photo: Profile → Upload Photo
+- Change password: Profile → Change Password
+- Report a problem: Reports (when logged in) — choose type, describe issue
+- Read notifications: Notifications menu (bell)
+
+13.7 Common issues & solutions
+----------------------------
+| Problem                         | What to do                                |
+|---------------------------------|-------------------------------------------|
+| Cannot log in                   | Check email/password; account may be      |
+|                                 | blocked — contact support                 |
+| Donate button missing           | Campaign may be pending approval          |
+| Donation stays pending          | NGO has not reviewed yet; wait or contact |
+|                                 | NGO                                       |
+| Upload proof fails              | Use JPG/PNG; check file size; ImageKit    |
+|                                 | config on server                          |
+| NGO cannot confirm donation     | Donation must be pending; only that NGO   |
+| Contact form does nothing       | Form is not wired to server — use email   |
+|                                 | support@donatenow.org or in-app report    |
+
+================================================================================
+14. ADMIN MANUAL CONTENT
+================================================================================
+
+14.1 Admin login
+----------------
+Use admin credentials (created via database/seed.php in dev only).
+Production: create admin user directly in DB or secure internal process.
+Login → redirected to admin/dashboard.php.
+
+14.2 Admin menu (includes/dashboard_sidebar.php)
+------------------------------------------------
+- Dashboard — overview
+- Manage Users — search users, view detail, change account status
+- Verify NGOs — pending NGO registrations
+- Manage Campaigns — approve/reject/hold/complete campaigns
+- All Donations — platform-wide donation list and detail
+- Reports — user-submitted safety reports
+- Analytics — statistics and charts
+- Email test — verify Brevo/SMTP configuration
+- Admin Notes — internal notes
+- Notifications / Profile / Logout
+
+14.3 Verify NGOs
+----------------
+1. Open Verify NGOs.
+2. Review registration details and documents/description.
+3. Approve (verified) or reject with reason.
+4. NGO receives notification; verified NGOs can operate fully.
+
+14.4 Manage campaigns
+---------------------
+1. Open Manage Campaigns — filter by status.
+2. Open campaign detail.
+3. Actions: Approve, Reject (reason required), Activate, Complete, Temporary hold.
+4. NGO notified by email/notification.
+
+14.5 Moderate users
+-------------------
+1. Manage Users → select user → User detail.
+2. Actions: Activate, Block, Suspend, Temporary hold (reason required for restrictions).
+3. History stored in account_status_history.
+
+14.6 Handle reports
+-------------------
+1. Reports list — open report detail.
+2. Review attachment and linked campaign/user/donation.
+3. Resolve or reject with admin note.
+4. Optionally cross-reference admin_notes.
+
+14.7 Donation oversight
+-----------------------
+- All Donations: view any donation, proof image, status history.
+- Admin does not replace NGO proof verification but can monitor flagged items.
+
+14.8 Analytics & email
+----------------------
+- Analytics: review KPIs for growth and activity.
+- Email test: send test message after changing .env mail settings.
+
+================================================================================
+15. IMPORTANT NOTES
+================================================================================
+
+15.1 Incomplete or limited features (from codebase)
+---------------------------------------------------
+- Contact form (pages/contact.php): onsubmit="return false;" — messages are NOT saved.
+- No integrated payment gateway (FAQ on index states manual proof only).
+- json_response() helper unused — no public JSON API for mobile apps.
+- pages/how-it-works.php and pages/faqs.php: legacy duplicates, not in main nav.
+- email_verified field exists; full email verification flow not clearly enforced on login.
+- Some donor/ngo PHP files use compact one-line style (harder maintenance).
+
+15.2 Security recommendations
+-------------------------------
+- Force HTTPS in production; set secure session cookie flags (not clearly in codebase).
+- Remove default admin seed credentials on production servers.
+- Restrict admin/email_test.php to trusted IPs or remove after testing.
+- Ensure .env is not web-accessible.
+- Rate-limit login and forgot-password (not clearly found).
+- Regular backups of MySQL.
+
+15.3 Performance recommendations
+-------------------------------
+- Add DB indexes on frequently filtered columns (status, ngo_id, campaign_id) if slow.
+- Cache heavy analytics queries on admin/analytics.php if data grows.
+- Optimize landing page external images (many hotlink URLs in index.php).
+
+15.4 Architecture suggestions
+-----------------------------
+- Introduce a thin routing layer or framework for maintainability if team grows.
+- Extract donation/campaign services from page files to reduce duplication.
+- Wire contact form to email or tickets table.
+- Remove or redirect orphan pages (how-it-works, faqs).
+- Add .env.example in repo (without secrets) for onboarding.
+
+15.5 Files useful for developers continuing this documentation
+--------------------------------------------------------------
+- includes/CODE_GUIDE.php — quick directory map
+- README.md — setup summary
+- database/schema.sql — full data model
+- includes/dashboard_sidebar.php — all role menus
+- PROJECT_ANALYSIS_FOR_USER_MANUAL.txt — this document
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================

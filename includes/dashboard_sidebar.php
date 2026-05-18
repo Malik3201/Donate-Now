@@ -60,7 +60,7 @@ $roleLabel = $sessionRole === 'ngo' ? 'NGO' : ucfirst($sessionRole);
 ?>
 <aside id="dashboardSidebar" class="dashboard-sidebar" aria-label="Primary navigation">
   <button type="button" class="dashboard-sidebar-close" id="sidebarClose" aria-label="Close menu"><?= dn_nav_icon('close') ?></button>
-  <a class="dashboard-sidebar-brand" href="<?= APP_URL ?>/index.php">
+  <a class="dashboard-sidebar-brand" href="<?= app_url('index.php') ?>">
     <?= app_logo_img('app-logo dashboard-sidebar-brand-mark', 40, 40) ?>
     <span>Donate Now</span>
   </a>
@@ -73,7 +73,7 @@ $roleLabel = $sessionRole === 'ngo' ? 'NGO' : ucfirst($sessionRole);
         $active = $currentPath !== '' && str_contains($currentPath, $needle);
         $isLogout = !empty($item['logout']);
         $classes = 'dashboard-nav-link' . ($active ? ' is-active' : '') . ($isLogout ? ' dashboard-nav-link--logout' : '');
-        $href = APP_URL . $path;
+        $href = app_url(ltrim($path, '/'));
         ?>
       <a class="<?= $classes ?>" href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>">
         <?= dn_nav_icon((string) $item['icon']) ?>

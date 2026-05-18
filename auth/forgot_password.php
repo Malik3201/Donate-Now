@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $expiresAt = (new DateTime('+30 minutes'))->format('Y-m-d H:i:s');
         $stmt = $pdo->prepare('INSERT INTO password_resets (user_id, token, expires_at, used) VALUES (:user_id, :token, :expires_at, 0)');
         $stmt->execute(['user_id' => (int)$user['id'], 'token' => $token, 'expires_at' => $expiresAt]);
-        $link = APP_URL . '/auth/reset_password.php?token=' . urlencode($token);
+        $link = app_url('auth/reset_password.php?token=' . urlencode($token));
         send_password_reset_email($user, $link);
     }
 

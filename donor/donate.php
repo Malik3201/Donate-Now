@@ -12,13 +12,39 @@ $campaignId = intval($_GET['campaign_id'] ?? $_POST['campaign_id'] ?? 0);
 $stmt = $pdo->prepare('SELECT id, user_id FROM donor_profiles WHERE user_id = :user_id LIMIT 1');$stmt->execute(['user_id'=>(int)$authUser['id']]);$donorProfile=$stmt->fetch(); if(!$donorProfile) exit('Donor profile not found.');
 $stmt = $pdo->prepare("SELECT c.*, np.ngo_name, u.id AS ngo_user_id, u.email AS ngo_email, u.full_name AS ngo_user_name FROM campaigns c INNER JOIN ngo_profiles np ON np.id = c.ngo_id INNER JOIN users u ON u.id = np.user_id WHERE c.id = :id AND c.status IN ('approved','active') LIMIT 1");$stmt->execute(['id'=>$campaignId]);$campaign=$stmt->fetch(); if(!$campaign) exit('Campaign unavailable for donation.');
 $stmt=$pdo->prepare("SELECT * FROM ngo_payment_methods WHERE ngo_id=:ngo_id AND status='active' ORDER BY created_at DESC");$stmt->execute(['ngo_id'=>(int)$campaign['ngo_id']]);$methods=$stmt->fetchAll();
-$errors=[];
-if($_SERVER['REQUEST_METHOD']==='POST'){
- if(!verify_csrf_token($_POST['csrf_token'] ?? null)) exit('Invalid CSRF token.');
- if(!$methods) $errors[]='No active payment methods for this campaign.';
- $paymentMethodId=intval($_POST['payment_method_id']??0);$amount=(float)($_POST['amount']??0);$tid=trim((string)($_POST['transaction_reference']??''));$message=trim((string)($_POST['donor_message']??''));
- if($amount<=0) $errors[]='Amount must be greater than 0.'; if($tid==='') $errors[]='Transaction reference is required.'; if(empty($_FILES['proof_image']['name'])) $errors[]='Proof image is required.';
- $stmt=$pdo->prepare('SELECT id FROM ngo_payment_methods WHERE id=:id AND ngo_id=:ngo_id AND status=:status LIMIT 1');$stmt->execute(['id'=>$paymentMethodId,'ngo_id'=>(int)$campaign['ngo_id'],'status'=>'active']); if(!$stmt->fetch()) $errors[]='Invalid payment method selected.';
+$errors = [];
+$highlightPaymentMethod = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+ if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+     exit('Invalid CSRF token.');
+ }
+ if (!$methods) {
+     $errors[] = 'No active payment methods are available for this campaign.';
+ }
+ $paymentMethodId = (int) ($_POST['payment_method_id'] ?? 0);
+ $amount = (float) ($_POST['amount'] ?? 0);
+ $tid = trim((string) ($_POST['transaction_reference'] ?? ''));
+ $message = trim((string) ($_POST['donor_message'] ?? ''));
+ if ($methods && $paymentMethodId <= 0) {
+     $errors[] = 'Please select the NGO payment method you used for this donation.';
+     $highlightPaymentMethod = true;
+ } elseif ($paymentMethodId > 0) {
+     $stmt = $pdo->prepare('SELECT id FROM ngo_payment_methods WHERE id=:id AND ngo_id=:ngo_id AND status=:status LIMIT 1');
+     $stmt->execute(['id' => $paymentMethodId, 'ngo_id' => (int) $campaign['ngo_id'], 'status' => 'active']);
+     if (!$stmt->fetch()) {
+         $errors[] = 'The selected payment method is no longer available. Please choose another option.';
+         $highlightPaymentMethod = true;
+     }
+ }
+ if ($amount <= 0) {
+     $errors[] = 'Amount must be greater than 0.';
+ }
+ if ($tid === '') {
+     $errors[] = 'Transaction reference is required.';
+ }
+ if (empty($_FILES['proof_image']['name'])) {
+     $errors[] = 'Proof image is required.';
+ }
  $proofUrl=null;$proofFileId=null; if(!$errors){$upload=upload_to_imagekit($_FILES['proof_image'],'donation-proofs'); if(empty($upload['success'])){$errors[]=(string)($upload['message']??'Failed to upload proof image.');} else {$proofUrl=$upload['url'];$proofFileId=$upload['fileId'];}}
  if(!$errors){
   $stmt=$pdo->prepare('INSERT INTO donations (donor_id, ngo_id, campaign_id, payment_method_id, amount, transaction_reference, proof_image_url, proof_imagekit_file_id, donor_message, status) VALUES (:donor_id,:ngo_id,:campaign_id,:payment_method_id,:amount,:transaction_reference,:proof_image_url,:proof_imagekit_file_id,:donor_message,:status)');
@@ -32,6 +58,17 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   redirect('donor/my_donations.php');
  }
 }
+
+$selectedPaymentMethodId = (int) ($_POST['payment_method_id'] ?? 0);
+if ($methods) {
+    $validMethodIds = array_map(static fn(array $m): int => (int) $m['id'], $methods);
+    $hasValidSelection = $selectedPaymentMethodId > 0
+        && in_array($selectedPaymentMethodId, $validMethodIds, true);
+    if (!$hasValidSelection && !$highlightPaymentMethod) {
+        $selectedPaymentMethodId = (int) $methods[0]['id'];
+    }
+}
+
 $progress=((float)$campaign['target_amount']>0)?min(100,((float)$campaign['collected_amount']/(float)$campaign['target_amount']*100)):0;
 $pageTitle='Donate';
 require_once dirname(__DIR__) . '/includes/dashboard_layout_start.php';
@@ -39,13 +76,23 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
 ?>
 <h1 class="section-title">Donate to Campaign</h1>
 <?php require dirname(__DIR__) . '/includes/flash_messages.php'; ?>
-<?php if ($errors): ?><div class="toast error"><?= sanitize(implode(' | ', $errors)) ?></div><?php endif; ?>
+<?php if ($errors): ?>
+<div class="toast error" role="alert">
+  <strong>Please fix the following:</strong>
+  <ul class="dn-form-error-list">
+    <?php foreach ($errors as $err): ?>
+      <li><?= sanitize($err) ?></li>
+    <?php endforeach; ?>
+  </ul>
+</div>
+<?php endif; ?>
 <div class="grid" style="grid-template-columns:1fr;gap:1rem;">
 <div class="glass-card" style="padding:1rem;"><h3>Step 1: Campaign Summary</h3><div class="grid" style="grid-template-columns:120px 1fr;align-items:center;"><img src="<?= sanitize(image_or_placeholder((string)($campaign['image_url']??''),'campaign')) ?>" alt="Campaign image" style="width:120px;height:90px;object-fit:cover;"><div><strong><?= sanitize($campaign['title']) ?></strong><p>NGO: <?= sanitize($campaign['ngo_name']) ?></p><p>Target: PKR <?= number_format((float)$campaign['target_amount'],2) ?> | Collected: PKR <?= number_format((float)$campaign['collected_amount'],2) ?></p><div class="progress-wrap"><div class="progress-bar" style="width:<?= number_format($progress,2) ?>%"></div></div></div></div></div>
-<form method="post" enctype="multipart/form-data" class="form-card" data-loading-button><input type="hidden" name="csrf_token" value="<?= sanitize(csrf_token()) ?>"><input type="hidden" name="campaign_id" value="<?= (int)$campaign['id'] ?>">
-<div class="dn-pm-form-section">
+<form method="post" enctype="multipart/form-data" class="form-card" id="donateForm" data-loading-button><input type="hidden" name="csrf_token" value="<?= sanitize(csrf_token()) ?>"><input type="hidden" name="campaign_id" value="<?= (int)$campaign['id'] ?>">
+<div class="dn-pm-form-section<?= $highlightPaymentMethod ? ' dn-pm-form-section--error' : '' ?>" id="dnPmMethodSection">
   <h3>Step 2: Select NGO payment method</h3>
   <p class="help-text">Choose the account you sent money to. Copy the number into your banking app if needed.</p>
+  <p id="dnPmMethodError" class="dn-field-error" role="alert"<?= $highlightPaymentMethod ? '' : ' hidden' ?>>Please select the NGO payment method you paid into before continuing.</p>
   <?php if (!$methods): ?>
     <div class="dn-pm-empty">
     <strong>No active payout methods</strong>
@@ -57,10 +104,12 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
           $tk = payment_method_type_key((string) $method['method_type']);
           $theme = 'dn-pm-theme--' . $tk;
           $instr = trim((string) ($method['instructions'] ?? ''));
+          $isSelected = $selectedPaymentMethodId === (int) $method['id'];
           ?>
-        <label class="dn-pm-select <?= sanitize($theme) ?>">
-          <input type="radio" name="payment_method_id" value="<?= (int) $method['id'] ?>" required>
+        <label class="dn-pm-select <?= sanitize($theme) ?><?= $isSelected ? ' is-selected' : '' ?>">
+          <input type="radio" name="payment_method_id" value="<?= (int) $method['id'] ?>"<?= $isSelected ? ' checked' : '' ?>>
           <span class="dn-pm-select__face">
+            <span class="dn-pm-select__selected-badge">Selected</span>
             <div class="dn-pm-select__top">
               <div class="dn-pm-mono" aria-hidden="true"><?= sanitize(payment_method_type_short((string) $method['method_type'])) ?></div>
               <div>
@@ -116,6 +165,63 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
       if (!f) return;
       pr.src = URL.createObjectURL(f);
       pr.classList.remove('hidden');
+    });
+  }
+
+  var donateForm = document.getElementById('donateForm');
+  var pmSection = document.getElementById('dnPmMethodSection');
+  var pmError = document.getElementById('dnPmMethodError');
+  var pmRadios = document.querySelectorAll('input[name="payment_method_id"]');
+
+  function syncPaymentMethodUi() {
+    pmRadios.forEach(function (radio) {
+      var label = radio.closest('.dn-pm-select');
+      if (label) {
+        label.classList.toggle('is-selected', radio.checked);
+      }
+    });
+  }
+
+  function clearPaymentMethodError() {
+    if (pmSection) {
+      pmSection.classList.remove('dn-pm-form-section--error');
+    }
+    if (pmError) {
+      pmError.hidden = true;
+    }
+  }
+
+  function showPaymentMethodError() {
+    if (pmSection) {
+      pmSection.classList.add('dn-pm-form-section--error');
+      pmSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (pmError) {
+      pmError.hidden = false;
+    }
+  }
+
+  if (donateForm && pmRadios.length) {
+    var checked = donateForm.querySelector('input[name="payment_method_id"]:checked');
+    if (!checked) {
+      pmRadios[0].checked = true;
+    }
+    syncPaymentMethodUi();
+    clearPaymentMethodError();
+
+    pmRadios.forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        syncPaymentMethodUi();
+        clearPaymentMethodError();
+      });
+    });
+
+    donateForm.addEventListener('submit', function (e) {
+      var selected = donateForm.querySelector('input[name="payment_method_id"]:checked');
+      if (!selected) {
+        e.preventDefault();
+        showPaymentMethodError();
+      }
     });
   }
 })();

@@ -24,7 +24,7 @@ $roleChip = $roleKey === 'ngo' ? 'NGO' : ucfirst($roleKey);
     </div>
     <div class="dashboard-topbar-right">
       <span class="dashboard-chip-role"><?= htmlspecialchars($roleChip, ENT_QUOTES, 'UTF-8') ?></span>
-      <a class="dashboard-bell" href="<?= APP_URL ?>/notifications/index.php" aria-label="Notifications">
+      <a class="dashboard-bell" href="<?= app_url('notifications/index.php') ?>" aria-label="Notifications">
         <?= dn_nav_icon('bell') ?>
         <?php if ($unreadCount > 0): ?>
           <span class="dashboard-bell-count"><?= (int) min(99, $unreadCount) ?></span>
@@ -36,9 +36,9 @@ $roleChip = $roleKey === 'ngo' ? 'NGO' : ucfirst($roleKey);
           <span class="truncate"><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></span>
         </button>
         <div id="topbarProfileMenu" class="dashboard-profile-menu" role="menu" style="display:none;">
-          <a role="menuitem" href="<?= APP_URL ?>/profile/view_profile.php">View Profile</a>
-          <a role="menuitem" href="<?= APP_URL ?>/profile/change_password.php">Change Password</a>
-          <a role="menuitem" href="<?= APP_URL ?>/auth/logout.php">Logout</a>
+          <a role="menuitem" href="<?= app_url('profile/view_profile.php') ?>">View Profile</a>
+          <a role="menuitem" href="<?= app_url('profile/change_password.php') ?>">Change Password</a>
+          <a role="menuitem" href="<?= app_url('auth/logout.php') ?>">Logout</a>
         </div>
       </div>
     </div>
