@@ -74,135 +74,42 @@ function send_email(string $to, string $subject, string $htmlBody, ?int $user_id
     return send_email_result($to, $subject, $htmlBody, $user_id, $template_name)['ok'];
 }
 
-/**
- * Send one transactional email via Brevo HTTP API; logs to email_logs.
- *
- * @return array{ok: bool, error: ?string}
- */
-function send_email_result(string $to, string $subject, string $htmlBody, ?int $user_id = null, ?string $template_name = null): array
+function mail_html_to_plain_text(string $htmlBody): string
 {
-    $cfg = brevo_config();
-    $transport = brevo_mail_transport();
+    $normalized = preg_replace('/<(br|BR)\s*\/?>/', "\n", $htmlBody) ?? $htmlBody;
+    $normalized = preg_replace('/<\/(p|div|li|tr|h[1-6])>/i', "\n", $normalized) ?? $normalized;
+    $text = html_entity_decode(strip_tags($normalized), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace("/[ \t]+\n/", "\n", $text) ?? $text;
+    $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
 
-    if ($transport === '') {
-        $detail = 'Email not configured: set BREVO_FROM_EMAIL plus either BREVO_API_KEY (xkeysib-…) or BREVO_SMTP_USER + BREVO_SMTP_PASS (xsmtpsib-…).';
-        try {
-            $pdo = db();
-            $stmt = $pdo->prepare('INSERT INTO email_logs (user_id, recipient_email, subject, template_name, status, error_message) VALUES (:user_id, :recipient_email, :subject, :template_name, :status, :error_message)');
-            $stmt->execute([
-                'user_id' => $user_id,
-                'recipient_email' => $to,
-                'subject' => $subject,
-                'template_name' => $template_name,
-                'status' => 'failed',
-                'error_message' => $detail,
-            ]);
-        } catch (Throwable $e) {
+    return trim($text) !== '' ? trim($text) : ' ';
+}
+
+function mail_sanitize_error(string $message): string
+{
+    $message = preg_replace('/\bxkeysib-[A-Za-z0-9_-]+/i', '[api-key-redacted]', $message) ?? $message;
+    $message = preg_replace('/\bxsmtpsib-[A-Za-z0-9_-]+/i', '[smtp-key-redacted]', $message) ?? $message;
+
+    return $message;
+}
+
+function mail_write_email_log(
+    string $to,
+    string $subject,
+    ?int $user_id,
+    ?string $template_name,
+    bool $ok,
+    ?string $errorMessage,
+    ?string $method = null
+): void {
+    $logError = $errorMessage;
+    if ($method !== null && $method !== '') {
+        if ($ok) {
+            error_log(sprintf('Email sent via %s to %s — %s', $method, $to, $subject));
+        } else {
+            $logError = '[' . $method . '] ' . ($errorMessage ?? 'Send failed.');
+            error_log(sprintf('Email failed via %s to %s — %s — %s', $method, $to, $subject, $errorMessage ?? ''));
         }
-
-        return ['ok' => false, 'error' => $detail];
-    }
-
-    if ($transport === 'smtp') {
-        $result = smtp_send_html_email([
-            'host' => $cfg['smtp_host'],
-            'port' => $cfg['smtp_port'],
-            'user' => $cfg['smtp_user'],
-            'pass' => $cfg['smtp_pass'],
-            'from_email' => $cfg['from_email'],
-            'from_name' => $cfg['from_name'],
-        ], $to, $subject, $htmlBody);
-
-        $ok = $result['ok'];
-        $failureDetail = $result['error'] ?? 'SMTP send failed.';
-
-        if (!$ok) {
-            error_log('Brevo SMTP send_email failed: ' . $failureDetail);
-        }
-
-        try {
-            $pdo = db();
-            $stmt = $pdo->prepare('INSERT INTO email_logs (user_id, recipient_email, subject, template_name, status, error_message) VALUES (:user_id, :recipient_email, :subject, :template_name, :status, :error_message)');
-            $stmt->execute([
-                'user_id' => $user_id,
-                'recipient_email' => $to,
-                'subject' => $subject,
-                'template_name' => $template_name,
-                'status' => $ok ? 'sent' : 'failed',
-                'error_message' => $ok ? null : $failureDetail,
-            ]);
-        } catch (Throwable $e) {
-        }
-
-        return ['ok' => $ok, 'error' => $ok ? null : $failureDetail];
-    }
-
-    $payload = [
-        'sender' => ['name' => $cfg['from_name'], 'email' => $cfg['from_email']],
-        'to' => [['email' => $to]],
-        'subject' => $subject,
-        'htmlContent' => $htmlBody,
-    ];
-
-    $json = json_encode($payload);
-    if ($json === false) {
-        $detail = 'Could not encode email payload as JSON.';
-        try {
-            $pdo = db();
-            $stmt = $pdo->prepare('INSERT INTO email_logs (user_id, recipient_email, subject, template_name, status, error_message) VALUES (:user_id, :recipient_email, :subject, :template_name, :status, :error_message)');
-            $stmt->execute([
-                'user_id' => $user_id,
-                'recipient_email' => $to,
-                'subject' => $subject,
-                'template_name' => $template_name,
-                'status' => 'failed',
-                'error_message' => $detail,
-            ]);
-        } catch (Throwable $e) {
-        }
-
-        return ['ok' => false, 'error' => $detail];
-    }
-
-    $ch = curl_init($cfg['api_url']);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $json,
-        CURLOPT_HTTPHEADER => [
-            'accept: application/json',
-            'content-type: application/json',
-            'api-key: ' . $cfg['api_key'],
-        ],
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-    ]);
-    $raw = curl_exec($ch);
-    $error = curl_error($ch);
-    $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    $failureDetail = $error;
-    if ($failureDetail === '' && $raw !== false && $raw !== '') {
-        $decoded = json_decode((string) $raw, true);
-        if (is_array($decoded)) {
-            if (isset($decoded['message'])) {
-                $failureDetail = (string) $decoded['message'];
-            } elseif (isset($decoded['code'])) {
-                $failureDetail = 'HTTP ' . $statusCode . ' code ' . (string) $decoded['code'];
-            }
-        }
-        if ($failureDetail === '') {
-            $failureDetail = 'HTTP ' . $statusCode . ' ' . substr((string) $raw, 0, 400);
-        }
-    } elseif ($failureDetail === '') {
-        $failureDetail = 'HTTP ' . $statusCode;
-    }
-
-    $ok = $error === '' && $statusCode >= 200 && $statusCode < 300;
-
-    if (!$ok) {
-        error_log('Brevo send_email failed: ' . $failureDetail);
     }
 
     try {
@@ -214,12 +121,178 @@ function send_email_result(string $to, string $subject, string $htmlBody, ?int $
             'subject' => $subject,
             'template_name' => $template_name,
             'status' => $ok ? 'sent' : 'failed',
-            'error_message' => $ok ? null : $failureDetail,
+            'error_message' => $ok ? null : mail_sanitize_error((string) $logError),
         ]);
     } catch (Throwable $e) {
     }
+}
 
-    return ['ok' => $ok, 'error' => $ok ? null : $failureDetail];
+/**
+ * @param array<string, mixed> $cfg
+ * @return array{ok: bool, error: ?string}
+ */
+function send_email_via_brevo_api(array $cfg, string $to, string $subject, string $htmlBody): array
+{
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'cURL is required for Brevo API sending. Enable PHP cURL extension.'];
+    }
+
+    if (!extension_loaded('openssl')) {
+        return ['ok' => false, 'error' => 'OpenSSL extension is required for HTTPS API requests.'];
+    }
+
+    $recipientName = '';
+    if (str_contains($to, '<') && preg_match('/^(.+)<([^>]+)>$/', $to, $m)) {
+        $recipientName = trim($m[1], " \t\"'");
+        $to = trim($m[2]);
+    }
+
+    $toEntry = ['email' => $to];
+    if ($recipientName !== '') {
+        $toEntry['name'] = $recipientName;
+    }
+
+    $payload = [
+        'sender' => ['name' => (string) $cfg['from_name'], 'email' => (string) $cfg['from_email']],
+        'to' => [$toEntry],
+        'subject' => $subject,
+        'htmlContent' => $htmlBody,
+        'textContent' => mail_html_to_plain_text($htmlBody),
+    ];
+
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+    if ($json === false) {
+        return ['ok' => false, 'error' => 'Could not encode email payload as JSON.'];
+    }
+
+    $ch = curl_init((string) $cfg['api_url']);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $json,
+        CURLOPT_HTTPHEADER => [
+            'accept: application/json',
+            'content-type: application/json',
+            'api-key: ' . (string) $cfg['api_key'],
+        ],
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    ]);
+
+    $raw = curl_exec($ch);
+    $curlError = curl_error($ch);
+    $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($curlError !== '') {
+        return ['ok' => false, 'error' => mail_sanitize_error('Brevo API request failed: ' . $curlError)];
+    }
+
+    if ($statusCode >= 200 && $statusCode < 300) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $failureDetail = '';
+    if ($raw !== false && $raw !== '') {
+        $decoded = json_decode((string) $raw, true);
+        if (is_array($decoded) && isset($decoded['message'])) {
+            $failureDetail = (string) $decoded['message'];
+        } else {
+            $failureDetail = 'HTTP ' . $statusCode . ' ' . substr((string) $raw, 0, 400);
+        }
+    } else {
+        $failureDetail = 'HTTP ' . $statusCode;
+    }
+
+    return ['ok' => false, 'error' => mail_sanitize_error($failureDetail)];
+}
+
+/**
+ * @param array<string, mixed> $cfg
+ * @return array{ok: bool, error: ?string}
+ */
+function send_email_via_smtp(array $cfg, string $to, string $subject, string $htmlBody): array
+{
+    $result = smtp_send_html_email([
+        'host' => (string) $cfg['smtp_host'],
+        'port' => (int) $cfg['smtp_port'],
+        'user' => (string) $cfg['smtp_user'],
+        'pass' => (string) $cfg['smtp_pass'],
+        'from_email' => (string) $cfg['from_email'],
+        'from_name' => (string) $cfg['from_name'],
+    ], $to, $subject, $htmlBody);
+
+    if (!$result['ok'] && isset($result['error'])) {
+        $result['error'] = mail_sanitize_error((string) $result['error']);
+    }
+
+    return $result;
+}
+
+/**
+ * Send one transactional email: Brevo API first, SMTP fallback.
+ *
+ * @return array{ok: bool, error: ?string, method: ?string}
+ */
+function send_email_result(string $to, string $subject, string $htmlBody, ?int $user_id = null, ?string $template_name = null): array
+{
+    $cfg = brevo_config();
+
+    if (!brevo_mail_is_configured()) {
+        $detail = 'Email not configured: set BREVO_FROM_EMAIL plus BREVO_API_KEY (xkeysib-…) and/or BREVO_SMTP_USER + BREVO_SMTP_PASS (xsmtpsib-…).';
+        mail_write_email_log($to, $subject, $user_id, $template_name, false, $detail, 'none');
+
+        return ['ok' => false, 'error' => $detail, 'method' => null];
+    }
+
+    $attemptErrors = [];
+
+    if (brevo_api_is_configured()) {
+        $apiResult = send_email_via_brevo_api($cfg, $to, $subject, $htmlBody);
+        if ($apiResult['ok']) {
+            mail_write_email_log($to, $subject, $user_id, $template_name, true, null, 'brevo_api');
+
+            return ['ok' => true, 'error' => null, 'method' => 'brevo_api'];
+        }
+
+        $apiError = $apiResult['error'] ?? 'Brevo API send failed.';
+        $attemptErrors[] = 'Brevo API: ' . $apiError;
+        error_log('Brevo API send_email failed: ' . $apiError);
+
+        if (!brevo_smtp_is_configured()) {
+            mail_write_email_log($to, $subject, $user_id, $template_name, false, $apiError, 'brevo_api');
+
+            return ['ok' => false, 'error' => $apiError, 'method' => 'brevo_api'];
+        }
+    }
+
+    if (brevo_smtp_is_configured()) {
+        $smtpResult = send_email_via_smtp($cfg, $to, $subject, $htmlBody);
+        if ($smtpResult['ok']) {
+            $method = brevo_api_is_configured() ? 'smtp_fallback' : 'smtp';
+            mail_write_email_log($to, $subject, $user_id, $template_name, true, null, $method);
+
+            return ['ok' => true, 'error' => null, 'method' => $method];
+        }
+
+        $smtpError = $smtpResult['error'] ?? 'SMTP send failed.';
+        $attemptErrors[] = 'SMTP: ' . $smtpError;
+        error_log('Brevo SMTP send_email failed: ' . $smtpError);
+
+        $finalError = count($attemptErrors) > 1
+            ? implode(' Then ', $attemptErrors)
+            : $smtpError;
+        $method = brevo_api_is_configured() ? 'brevo_api+smtp' : 'smtp';
+        mail_write_email_log($to, $subject, $user_id, $template_name, false, $finalError, $method);
+
+        return ['ok' => false, 'error' => $finalError, 'method' => $method];
+    }
+
+    $detail = $attemptErrors[0] ?? 'Email transport unavailable.';
+    mail_write_email_log($to, $subject, $user_id, $template_name, false, $detail, 'brevo_api');
+
+    return ['ok' => false, 'error' => $detail, 'method' => 'brevo_api'];
 }
 
 function send_registration_email(array $user): bool
@@ -410,13 +483,13 @@ function admin_last_email_error_for_recipient(string $recipientEmail, ?string $t
 /**
  * Admin-only: send a sample of a production template to any inbox for QA.
  *
- * @return array{ok: bool, error: ?string, template: string}
+ * @return array{ok: bool, error: ?string, template: string, method: ?string}
  */
 function admin_send_test_email(string $recipientEmail, string $templateKey, int $adminUserId): array
 {
     $recipientEmail = trim($recipientEmail);
     if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
-        return ['ok' => false, 'error' => 'Invalid email address.', 'template' => $templateKey];
+        return ['ok' => false, 'error' => 'Invalid email address.', 'template' => $templateKey, 'method' => null];
     }
 
     $mockUser = [
@@ -432,6 +505,7 @@ function admin_send_test_email(string $recipientEmail, string $templateKey, int 
             'ok' => $result['ok'],
             'error' => $result['error'],
             'template' => $template,
+            'method' => $result['method'] ?? null,
         ];
     };
 
@@ -440,6 +514,7 @@ function admin_send_test_email(string $recipientEmail, string $templateKey, int 
             'ok' => $ok,
             'error' => $ok ? null : admin_last_email_error_for_recipient($recipient, $template),
             'template' => $template,
+            'method' => $ok ? null : null,
         ];
     };
 
@@ -582,6 +657,18 @@ function admin_send_test_email(string $recipientEmail, string $templateKey, int 
             return $fromBool(send_volunteer_request_status_email($mockUser, $data), 'volunteer_request_status', $recipientEmail);
 
         default:
-            return ['ok' => false, 'error' => 'Unknown template.', 'template' => $templateKey];
+            return ['ok' => false, 'error' => 'Unknown template.', 'template' => $templateKey, 'method' => null];
     }
+}
+
+/** Human-readable label for transport method returned by send_email_result(). */
+function mail_method_label(?string $method): string
+{
+    return match ($method) {
+        'brevo_api' => 'Brevo API (HTTPS)',
+        'smtp' => 'SMTP',
+        'smtp_fallback' => 'SMTP (fallback after API failure)',
+        'brevo_api+smtp' => 'Brevo API then SMTP (both failed)',
+        default => '—',
+    };
 }

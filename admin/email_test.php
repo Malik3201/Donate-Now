@@ -33,9 +33,10 @@ $templateOptions = [
 
 $msg = '';
 $error = '';
+$lastMethod = null;
 $brevo = brevo_config();
-$mailConfigured = brevo_mail_is_configured();
-$mailTransport = brevo_mail_transport();
+$diag = brevo_mail_diagnostics();
+$mailConfigured = (bool) $diag['mail_configured'];
 $defaultAdminEmail = admin_primary_email() ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -49,10 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Please choose a valid template.';
         } else {
             $result = admin_send_test_email($email, $templateKey, (int) $authUser['id']);
+            $lastMethod = $result['method'] ?? null;
             if ($result['ok']) {
-                $msg = 'Email queued successfully. Template log key: ' . sanitize($result['template']) . '. Check the inbox (and spam) for ' . sanitize($email) . '.';
+                $methodLabel = mail_method_label($lastMethod);
+                $msg = 'Email sent successfully via ' . $methodLabel . '. Template log key: ' . sanitize($result['template']) . '. Check the inbox (and spam) for ' . sanitize($email) . '.';
             } else {
                 $error = 'Send failed. ' . ($result['error'] ?? 'Unknown error.');
+                if ($lastMethod !== null) {
+                    $error .= ' Last attempt: ' . mail_method_label($lastMethod) . '.';
+                }
             }
         }
     }
@@ -68,24 +74,50 @@ require dirname(__DIR__) . '/includes/breadcrumbs.php';
 ?>
 <div class="dn-page-head">
   <h1 class="dn-page-title">Email test</h1>
-  <p class="dn-page-lead">Send a templated test message to any address. Results are written to <code>email_logs</code> with status and Brevo error details.</p>
+  <p class="dn-page-lead">Send a templated test message to any address. On live hosting, <strong>Brevo API (HTTPS)</strong> is tried first when <code>BREVO_API_KEY</code> is set; SMTP is used only as fallback.</p>
 </div>
 
 <?php if (!$mailConfigured): ?>
   <div class="toast error" style="margin-bottom:1rem;">
-    Email is not configured: set <strong>BREVO_FROM_EMAIL</strong> (verified sender) and either
-    <strong>BREVO_API_KEY</strong> (<code>xkeysib-…</code>) or SMTP
+    Email is not configured: set <strong>BREVO_FROM_EMAIL</strong> (verified sender in Brevo) and either
+    <strong>BREVO_API_KEY</strong> (<code>xkeysib-…</code>, recommended for live hosting) or SMTP
     <strong>BREVO_SMTP_USER</strong> + <strong>BREVO_SMTP_PASS</strong> (<code>xsmtpsib-…</code>) in <code>.env</code>.
   </div>
-<?php elseif ($mailTransport === 'smtp'): ?>
+<?php elseif ($diag['api_configured']): ?>
   <div class="toast" style="margin-bottom:1rem;background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.35);">
-    Using <strong>SMTP</strong> (<?= htmlspecialchars($brevo['smtp_host'], ENT_QUOTES, 'UTF-8') ?>:<?= (int) $brevo['smtp_port'] ?>) with sender <?= htmlspecialchars($brevo['from_email'], ENT_QUOTES, 'UTF-8') ?>.
+    <strong>Brevo API</strong> is configured (preferred). SMTP fallback <?= $diag['smtp_configured'] ? 'is also available' : 'is not configured' ?>.
+  </div>
+<?php elseif ($diag['smtp_configured']): ?>
+  <div class="toast" style="margin-bottom:1rem;background:rgba(244,183,64,0.15);border-color:rgba(244,183,64,0.4);">
+    Only <strong>SMTP</strong> is configured (<?= htmlspecialchars((string) $diag['smtp_host'], ENT_QUOTES, 'UTF-8') ?>:<?= (int) $diag['smtp_port'] ?>).
+    Many hosts block outbound SMTP — add <strong>BREVO_API_KEY</strong> for reliable delivery over HTTPS.
   </div>
 <?php endif; ?>
 
 <?php require dirname(__DIR__) . '/includes/flash_messages.php'; ?>
 
 <div class="dn-admin-email-test">
+  <section class="glass-card dn-admin-email-test__form-card" style="padding:1.2rem 1.25rem;margin-bottom:1.25rem;">
+    <h2 class="dn-admin-email-test__h2">Mail configuration</h2>
+    <dl class="dn-admin-email-test__diag" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:0.45rem 1rem;margin:0;font-size:0.9rem;">
+      <dt>Brevo API configured</dt><dd><?= $diag['api_configured'] ? 'Yes' : 'No' ?></dd>
+      <dt>cURL available</dt><dd><?= $diag['curl_available'] ? 'Yes' : 'No — required for Brevo API' ?></dd>
+      <dt>OpenSSL available</dt><dd><?= $diag['openssl_available'] ? 'Yes' : 'No — required for HTTPS/TLS' ?></dd>
+      <dt>SMTP configured</dt><dd><?= $diag['smtp_configured'] ? 'Yes' : 'No' ?></dd>
+      <dt>SMTP host</dt><dd><code><?= htmlspecialchars((string) $diag['smtp_host'], ENT_QUOTES, 'UTF-8') ?></code></dd>
+      <dt>SMTP port</dt><dd><?= (int) $diag['smtp_port'] ?> (587 STARTTLS, 465 SSL, 2525 STARTTLS)</dd>
+      <dt>SMTP username configured</dt><dd><?= $diag['smtp_user_configured'] ? 'Yes' : 'No' ?></dd>
+      <dt>SMTP password configured</dt><dd><?= $diag['smtp_pass_configured'] ? 'Yes' : 'No' ?></dd>
+      <dt>From email</dt><dd><?= $diag['from_email'] !== '' ? htmlspecialchars((string) $diag['from_email'], ENT_QUOTES, 'UTF-8') : '<em>not set</em>' ?></dd>
+      <dt>From name</dt><dd><?= htmlspecialchars((string) $diag['from_name'], ENT_QUOTES, 'UTF-8') ?></dd>
+      <dt>ADMIN_EMAIL</dt><dd><?= $diag['admin_email'] !== '' ? htmlspecialchars((string) $diag['admin_email'], ENT_QUOTES, 'UTF-8') : '<em>not set</em>' ?></dd>
+      <dt>Preferred method</dt><dd><?= $diag['api_configured'] ? 'Brevo API, then SMTP fallback' : ($diag['smtp_configured'] ? 'SMTP only' : '—') ?></dd>
+    </dl>
+    <?php if ($diag['api_configured'] && !$diag['curl_available']): ?>
+      <p class="help-text" style="margin:0.75rem 0 0;color:#8f4329;">cURL is required for Brevo API sending. Enable the PHP cURL extension on this server.</p>
+    <?php endif; ?>
+  </section>
+
   <section class="glass-card dn-admin-email-test__form-card" style="padding:1.2rem 1.25rem;">
     <h2 class="dn-admin-email-test__h2">Send test email</h2>
     <form method="post" class="form-grid" style="gap:1rem;">

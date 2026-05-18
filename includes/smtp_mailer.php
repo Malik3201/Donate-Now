@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Minimal SMTP client (STARTTLS + AUTH LOGIN) for Brevo / generic relays.
+ * Minimal SMTP client (SSL on 465, STARTTLS on 587/2525) for Brevo / generic relays.
  *
  * @param array{host: string, port: int, user: string, pass: string, from_email: string, from_name: string} $cfg
  * @return array{ok: bool, error: ?string}
@@ -20,10 +20,22 @@ function smtp_send_html_email(array $cfg, string $to, string $subject, string $h
         return ['ok' => false, 'error' => 'Incomplete SMTP configuration.'];
     }
 
+    if (str_starts_with($pass, 'xkeysib-')) {
+        return ['ok' => false, 'error' => 'BREVO_SMTP_PASS must be an SMTP key (xsmtpsib-…), not an API key (xkeysib-…).'];
+    }
+
+    $allowedPorts = [25, 465, 587, 2525];
+    if (!in_array($port, $allowedPorts, true)) {
+        $port = 587;
+    }
+
+    $useSsl = $port === 465;
+    $target = ($useSsl ? 'ssl://' : 'tcp://') . $host . ':' . $port;
+
     $errno = 0;
     $errstr = '';
     $socket = @stream_socket_client(
-        'tcp://' . $host . ':' . $port,
+        $target,
         $errno,
         $errstr,
         30,
@@ -31,7 +43,7 @@ function smtp_send_html_email(array $cfg, string $to, string $subject, string $h
     );
 
     if (!$socket) {
-        return ['ok' => false, 'error' => 'SMTP connect failed: ' . ($errstr !== '' ? $errstr : (string) $errno)];
+        return ['ok' => false, 'error' => smtp_format_connect_error($errstr, $errno)];
     }
 
     stream_set_timeout($socket, 30);
@@ -40,13 +52,18 @@ function smtp_send_html_email(array $cfg, string $to, string $subject, string $h
         smtp_expect($socket, [220]);
         smtp_cmd($socket, 'EHLO localhost', [250]);
 
-        smtp_cmd($socket, 'STARTTLS', [220]);
-        $cryptoOk = @stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-        if (!$cryptoOk) {
-            return ['ok' => false, 'error' => 'SMTP STARTTLS negotiation failed.'];
+        if (!$useSsl) {
+            smtp_cmd($socket, 'STARTTLS', [220]);
+            if (!extension_loaded('openssl')) {
+                return ['ok' => false, 'error' => 'OpenSSL extension is required for SMTP STARTTLS.'];
+            }
+            $cryptoOk = @stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if (!$cryptoOk) {
+                return ['ok' => false, 'error' => 'SMTP STARTTLS negotiation failed.'];
+            }
+            smtp_cmd($socket, 'EHLO localhost', [250]);
         }
 
-        smtp_cmd($socket, 'EHLO localhost', [250]);
         smtp_cmd($socket, 'AUTH LOGIN', [334]);
         smtp_cmd($socket, base64_encode($user), [334]);
         smtp_cmd($socket, base64_encode($pass), [235]);
@@ -74,12 +91,47 @@ function smtp_send_html_email(array $cfg, string $to, string $subject, string $h
         smtp_expect($socket, [250]);
         smtp_cmd($socket, 'QUIT', [221]);
     } catch (Throwable $e) {
-        return ['ok' => false, 'error' => $e->getMessage()];
+        return ['ok' => false, 'error' => smtp_sanitize_error_message($e->getMessage())];
     } finally {
         fclose($socket);
     }
 
     return ['ok' => true, 'error' => null];
+}
+
+function smtp_format_connect_error(string $errstr, int $errno): string
+{
+    $detail = $errstr !== '' ? $errstr : (string) $errno;
+    $lower = strtolower($detail);
+
+    if (
+        str_contains($lower, 'refused')
+        || str_contains($lower, 'timed out')
+        || str_contains($lower, 'could not connect')
+        || str_contains($lower, 'unable to connect')
+    ) {
+        return 'SMTP connection failed. The hosting provider may be blocking outbound SMTP ports. Configure BREVO_API_KEY to send through Brevo API over HTTPS.';
+    }
+
+    return 'SMTP connect failed: ' . $detail;
+}
+
+function smtp_sanitize_error_message(string $message): string
+{
+    $message = preg_replace('/AUTH[^\r\n]*/i', 'AUTH [redacted]', $message) ?? $message;
+    $message = preg_replace('/\bxkeysib-[A-Za-z0-9_-]+/i', '[api-key-redacted]', $message) ?? $message;
+    $message = preg_replace('/\bxsmtpsib-[A-Za-z0-9_-]+/i', '[smtp-key-redacted]', $message) ?? $message;
+
+    $lower = strtolower($message);
+    if (
+        str_contains($lower, 'refused')
+        || str_contains($lower, 'timed out')
+        || str_contains($lower, 'could not connect')
+    ) {
+        return 'SMTP connection failed. The hosting provider may be blocking outbound SMTP ports. Configure BREVO_API_KEY to send through Brevo API over HTTPS.';
+    }
+
+    return $message;
 }
 
 function smtp_encode_header_name(string $name): string
